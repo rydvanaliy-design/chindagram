@@ -1,0 +1,26 @@
+{
+  "name": "chindagram",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:setup": "prisma migrate deploy",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "next-auth": "5.0.0-beta.20",
+    "@prisma/client": "5.20.0",
+    "bcryptjs": "2.4.3"
+  },
+  "devDependencies": {
+    "prisma": "5.20.0",
+    "tailwindcss": "3.4.13",
+    "postcss": "8.4.47",
+    "autoprefixer": "10.4.20"
+  }
+}

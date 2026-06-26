@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --ig-border: #dbdbdb; }
+
+html, body { background-color: #fafafa; color: #111; }
+
+@layer components {
+  .ig-input {
+    @apply w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm outline-none transition focus:border-gray-400 focus:bg-white;
+  }
+  .ig-btn {
+    @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50;
+  }
+  .ig-btn-soft {
+    @apply rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 active:scale-[0.98];
+  }
+  .card {
+    @apply border-b border-gray-200 bg-white sm:rounded-2xl sm:border sm:shadow-sm;
+  }
+}
+
+/* hide scrollbars on the stories row and reels */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* the gradient ring around unseen-style story avatars */
+.story-ring {
+  background: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7);
+}
