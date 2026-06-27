@@ -10,6 +10,7 @@ export default function Composer() {
   const [caption, setCaption] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [held, setHeld] = useState(false);
 
   function onPick(e) {
     const picked = Array.from(e.target.files || []);
@@ -45,8 +46,27 @@ export default function Composer() {
       setBusy(false);
       return;
     }
+    const d = await res.json().catch(() => ({}));
+    if (d.status === "PENDING") {
+      // Held by the filter — tell the author instead of dropping them into the feed.
+      setHeld(true);
+      setBusy(false);
+      return;
+    }
     router.push(isVideo ? "/reels" : "/");
     router.refresh();
+  }
+
+  if (held) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+        <p className="mb-1 text-lg font-semibold text-amber-700">Sent for review</p>
+        <p className="mb-4 text-sm text-amber-700">
+          Your post will appear once a teacher or admin approves it. You can see it on your profile, marked “Pending review,” in the meantime.
+        </p>
+        <button onClick={() => router.push("/")} className="ig-btn">Back to feed</button>
+      </div>
+    );
   }
 
   return (

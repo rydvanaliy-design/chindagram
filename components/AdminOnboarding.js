@@ -25,6 +25,24 @@ function useApi() {
   return { busy, call };
 }
 
+// School-wide "hold every post & comment for review" switch.
+export function ApprovalToggle({ enabled }) {
+  const { busy, call } = useApi();
+  return (
+    <button
+      onClick={() => call("/api/admin/settings", { requireApproval: !enabled })}
+      disabled={busy}
+      className={
+        enabled
+          ? "rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+          : "rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-60"
+      }
+    >
+      {enabled ? "On — turn off" : "Off — turn on"}
+    </button>
+  );
+}
+
 // Rotate / disable the one school-wide access code.
 export function AccessCodeControls({ hasCode }) {
   const { busy, call } = useApi();

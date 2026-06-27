@@ -10,6 +10,7 @@ import BioEditor from "@/components/BioEditor";
 import LogoutButton from "@/components/LogoutButton";
 import { Reel } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
+import { visibleToViewer } from "@/lib/posts";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,10 @@ export default async function ProfilePage({ params }) {
     include: {
       _count: { select: { followers: true, following: true } },
       posts: {
-        where: { removed: false },
+        where: visibleToViewer(me),
         orderBy: { createdAt: "desc" },
         select: {
-          id: true, kind: true,
+          id: true, kind: true, status: true,
           media: { orderBy: { order: "asc" }, take: 1, select: { url: true, type: true } },
           _count: { select: { media: true } },
         },
@@ -95,6 +96,9 @@ export default async function ProfilePage({ params }) {
                       <video src={thumb?.url} className="h-full w-full object-cover" muted />
                     ) : (
                       <img src={thumb?.url} alt="" className="h-full w-full object-cover" />
+                    )}
+                    {p.status === "PENDING" && (
+                      <span className="absolute inset-x-0 bottom-0 bg-amber-500/90 px-1 py-0.5 text-center text-[10px] font-bold text-white">Pending review</span>
                     )}
                     {isVideo && <span className="absolute right-1 top-1 text-white drop-shadow"><Reel /></span>}
                     {!isVideo && p._count.media > 1 && (

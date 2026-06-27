@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
 import { postInclude, toPostProps } from "@/lib/posts";
+import { canModerateContent } from "@/lib/roles";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import PostCard from "@/components/PostCard";
@@ -15,6 +16,8 @@ export default async function PostPage({ params }) {
 
   const row = await prisma.post.findUnique({ where: { id: params.id }, include: postInclude(me) });
   if (!row || row.removed) notFound();
+  // Held posts are only viewable by their author or a content moderator.
+  if (row.status === "PENDING" && row.authorId !== me && !canModerateContent(viewer.role)) notFound();
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

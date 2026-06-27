@@ -23,7 +23,7 @@ export default async function ExplorePage({ searchParams }) {
     : [];
 
   const recent = await prisma.post.findMany({
-    where: { removed: false },
+    where: { removed: false, status: "VISIBLE" },
     orderBy: { createdAt: "desc" },
     take: 30,
     select: { id: true, kind: true, media: { orderBy: { order: "asc" }, take: 1, select: { url: true, type: true } } },

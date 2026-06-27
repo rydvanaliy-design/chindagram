@@ -44,7 +44,11 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
     setBusy(true);
     const res = await fetch(`/api/posts/${post.id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text }) });
     setBusy(false);
-    if (res.ok) { const d = await res.json(); setComments((cs) => [...cs, d.comment]); setDraft(""); }
+    if (res.ok) {
+      const d = await res.json();
+      setComments((cs) => [...cs, { ...d.comment, pending: d.comment.status === "PENDING" }]);
+      setDraft("");
+    }
   }
   async function report(target) {
     const reason = window.prompt("Tell admins what's wrong (optional):") ?? "";
@@ -75,13 +79,22 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
             <RoleBadge role={post.author.role} />
             <ClassBadge gradeClass={post.author.gradeClass} />
           </span>
-          <p className="text-xs text-gray-400">{post.kind === "REEL" ? "Reel · " : ""}{timeAgo(post.createdAt)}</p>
+          <p className="text-xs text-gray-400">
+            {post.kind === "REEL" ? "Reel · " : ""}{timeAgo(post.createdAt)}
+            {post.pending && <span className="ml-1 font-semibold text-amber-600">· Pending review</span>}
+          </p>
         </div>
         <div className="ml-auto flex items-center gap-3 text-gray-400">
           {!isOwner && <button onClick={() => report({ postId: post.id })} title="Report" className="hover:text-brand"><Flag /></button>}
           {(isOwner || isAdmin) && <button onClick={deletePost} className="text-xs font-semibold text-red-600 hover:underline">{isOwner ? "Delete" : "Remove"}</button>}
         </div>
       </div>
+
+      {post.pending && (
+        <p className="mx-4 mb-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          Waiting for a teacher or admin to review. Only you can see this for now.
+        </p>
+      )}
 
       <PostMedia media={post.media} />
 
@@ -111,6 +124,7 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
               <span className="flex-1">
                 <Link href={`/u/${c.author.id}`} className="font-semibold hover:underline">{c.author.name}</Link>{" "}
                 <span className="whitespace-pre-wrap">{c.body}</span>
+                {c.pending && <span className="ml-1 text-[11px] font-semibold text-amber-600">· pending review</span>}
               </span>
               <span className="flex shrink-0 items-center gap-2 opacity-0 transition group-hover:opacity-100">
                 {!c.mine && <button onClick={() => report({ commentId: c.id })} className="text-[11px] font-medium text-gray-400 hover:text-brand">report</button>}

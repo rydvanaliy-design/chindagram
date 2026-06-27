@@ -5,10 +5,11 @@ import QRCode from "qrcode";
 import { getSessionUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { getActiveCode } from "@/lib/access";
+import { requireApproval } from "@/lib/settings";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import { RemovePostBtn, RemoveCommentBtn, RemoveMessageBtn, DisableUserBtn } from "@/components/AdminActions";
-import { AccessCodeControls, RoleSelect, GradeClassEditor, ParentLinker } from "@/components/AdminOnboarding";
+import { AccessCodeControls, RoleSelect, GradeClassEditor, ParentLinker, ApprovalToggle } from "@/components/AdminOnboarding";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,10 @@ export default async function AdminPage() {
   const joinUrl = code ? `${proto}://${host}/join?code=${encodeURIComponent(code.code)}` : "";
   const qrSvg = code ? await QRCode.toString(joinUrl, { type: "svg", margin: 1 }) : "";
 
+  const approvalOn = await requireApproval();
+  const pendingCount = await prisma.post.count({ where: { status: "PENDING", removed: false } })
+    + await prisma.comment.count({ where: { status: "PENDING", removed: false } });
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
@@ -77,6 +82,28 @@ export default async function AdminPage() {
                 <AccessCodeControls hasCode={false} />
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Moderation */}
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Moderation</h2>
+          <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Hold everything for review</p>
+                <p className="text-xs text-gray-500">When on, every new post and comment waits for approval — not just flagged ones.</p>
+              </div>
+              <ApprovalToggle enabled={approvalOn} />
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+              <p className="text-sm">
+                {pendingCount > 0
+                  ? <><b>{pendingCount}</b> item{pendingCount === 1 ? "" : "s"} waiting for review</>
+                  : "Nothing waiting for review."}
+              </p>
+              <Link href="/review" className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white">Open review queue</Link>
+            </div>
           </div>
         </section>
 

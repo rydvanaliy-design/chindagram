@@ -43,6 +43,12 @@ model User {
   parentLinks   ParentLink[] @relation("childSide")
 }
 
+// Simple key/value store for school-wide settings (e.g. requireApproval).
+model AppSetting {
+  key   String @id
+  value String
+}
+
 // The one school-wide access code (entry gate to the join page).
 // Only one row should be `active` at a time; admins rotate/disable it.
 model AccessCode {
@@ -71,11 +77,13 @@ model ParentLink {
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  kind      String   @default("PHOTO") // PHOTO | REEL
-  caption   String?
-  removed   Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  kind       String   @default("PHOTO") // PHOTO | REEL
+  caption    String?
+  removed    Boolean  @default(false)
+  status     String   @default("VISIBLE") // VISIBLE | PENDING (held for review)
+  flagReason String?  // why the auto-filter held it (shown to reviewers)
+  createdAt  DateTime @default(now())
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -88,6 +96,7 @@ model Post {
 
   @@index([authorId, createdAt])
   @@index([kind, createdAt])
+  @@index([status, createdAt])
 }
 
 model PostMedia {
@@ -117,10 +126,12 @@ model Story {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  body      String
-  removed   Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  body       String
+  removed    Boolean  @default(false)
+  status     String   @default("VISIBLE") // VISIBLE | PENDING (held for review)
+  flagReason String?
+  createdAt  DateTime @default(now())
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -130,6 +141,7 @@ model Comment {
   reports  Report[]
 
   @@index([postId])
+  @@index([status])
 }
 
 model Like {

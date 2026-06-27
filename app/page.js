@@ -33,7 +33,7 @@ export default async function FeedPage() {
   let groups = [...map.values()];
   groups.sort((a, b) => (a.author.id === me ? -1 : b.author.id === me ? 1 : 0));
 
-  const posts = await getPostList({ removed: false, authorId: { in: authorIds } }, me, 30);
+  const posts = await getPostList({ authorId: { in: authorIds } }, me, 30);
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

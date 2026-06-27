@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { saveMedia } from "@/lib/upload";
 import { requireUserId } from "@/lib/guards";
+import { decideTextStatus } from "@/lib/moderation";
 
 export async function POST(req) {
   const userId = await requireUserId();
@@ -26,11 +27,17 @@ export async function POST(req) {
       media.push({ url: saved.url, type: saved.type, order: i });
     }
 
+    // Run the caption through the automated filter; held posts wait for review.
+    const { status, flagReason } = await decideTextStatus(caption);
+
     await prisma.post.create({
-      data: { kind, caption: caption || null, authorId: userId, media: { create: media } },
+      data: {
+        kind, caption: caption || null, authorId: userId, status, flagReason,
+        media: { create: media },
+      },
     });
 
-    return NextResponse.json({ ok: true }, { status: 201 });
+    return NextResponse.json({ ok: true, status }, { status: 201 });
   } catch (err) {
     console.error("create post error", err);
     return NextResponse.json({ error: err.message || "Could not create post." }, { status: 500 });

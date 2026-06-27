@@ -16,7 +16,7 @@ export default async function SavedPage() {
 
   const saves = await prisma.save.findMany({ where: { userId: me }, select: { postId: true } });
   const ids = saves.map((s) => s.postId);
-  const posts = ids.length ? await getPostList({ id: { in: ids }, removed: false }, me, 60) : [];
+  const posts = ids.length ? await getPostList({ id: { in: ids } }, me, 60) : [];
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

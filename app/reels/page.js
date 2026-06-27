@@ -12,7 +12,7 @@ export default async function ReelsPage() {
   const me = viewer.id;
 
   const rows = await prisma.post.findMany({
-    where: { kind: "REEL", removed: false },
+    where: { kind: "REEL", removed: false, status: "VISIBLE" },
     orderBy: { createdAt: "desc" },
     take: 30,
     include: {
