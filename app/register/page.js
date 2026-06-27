@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/guards";
-import RegisterForm from "@/components/RegisterForm";
 
-export default async function RegisterPage() {
-  const user = await getSessionUser();
-  if (user) redirect("/");
-  return <RegisterForm />;
+// Open email signup is replaced by the gated /join flow (school access code).
+export default function RegisterPage() {
+  redirect("/join");
 }

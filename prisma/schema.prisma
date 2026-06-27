@@ -17,7 +17,8 @@ model User {
   passwordHash String
   bio          String?
   image        String?
-  role         String   @default("USER") // USER | ADMIN
+  role         String   @default("STUDENT") // STUDENT | PARENT | TEACHER | ADMIN
+  gradeClass   String?  // e.g. "Class 6B" — shown as a badge
   disabled     Boolean  @default(false)
   createdAt    DateTime @default(now())
 
@@ -36,6 +37,37 @@ model User {
 
   notifications     Notification[] @relation("notifRecipient")
   notificationsMade Notification[] @relation("notifActor")
+
+  // Parent <-> child links (a Parent account can be linked to one or more Students)
+  childrenLinks ParentLink[] @relation("parentSide")
+  parentLinks   ParentLink[] @relation("childSide")
+}
+
+// The one school-wide access code (entry gate to the join page).
+// Only one row should be `active` at a time; admins rotate/disable it.
+model AccessCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([active])
+}
+
+// Lightweight connection from a Parent account to a Student account.
+// A parent can see the child's profile/public posts; never DMs or private activity.
+model ParentLink {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  parentId String
+  parent   User   @relation("parentSide", fields: [parentId], references: [id], onDelete: Cascade)
+  childId  String
+  child    User   @relation("childSide", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@index([parentId])
+  @@index([childId])
 }
 
 model Post {

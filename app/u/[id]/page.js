@@ -9,6 +9,7 @@ import FollowButton from "@/components/FollowButton";
 import BioEditor from "@/components/BioEditor";
 import LogoutButton from "@/components/LogoutButton";
 import { Reel } from "@/components/icons";
+import { RoleBadge, ClassBadge } from "@/components/Badge";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,12 @@ export default async function ProfilePage({ params }) {
                 </div>
               )}
             </div>
+            {(user.role !== "STUDENT" || user.gradeClass) && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <RoleBadge role={user.role} />
+                <ClassBadge gradeClass={user.gradeClass} />
+              </div>
+            )}
             <div className="mt-2 flex gap-6 text-sm">
               <span><b>{user.posts.length}</b> {user.posts.length === 1 ? "post" : "posts"}</span>
               <span><b>{user._count.followers}</b> followers</span>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import PostMedia from "@/components/PostMedia";
 import { Heart, HeartFilled, Comment as CommentIcon, Bookmark, BookmarkFilled, Flag } from "@/components/icons";
+import { RoleBadge, ClassBadge } from "@/components/Badge";
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -69,7 +70,11 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
       <div className="flex items-center gap-3 px-4 py-3">
         <Link href={`/u/${post.author.id}`}><Avatar name={post.author.name} image={post.author.image} size={36} ring={post.kind === "REEL"} /></Link>
         <div className="leading-tight">
-          <Link href={`/u/${post.author.id}`} className="text-sm font-semibold hover:underline">{post.author.name}</Link>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <Link href={`/u/${post.author.id}`} className="text-sm font-semibold hover:underline">{post.author.name}</Link>
+            <RoleBadge role={post.author.role} />
+            <ClassBadge gradeClass={post.author.gradeClass} />
+          </span>
           <p className="text-xs text-gray-400">{post.kind === "REEL" ? "Reel · " : ""}{timeAgo(post.createdAt)}</p>
         </div>
         <div className="ml-auto flex items-center gap-3 text-gray-400">

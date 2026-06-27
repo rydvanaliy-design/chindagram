@@ -1,10 +1,15 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { getSessionUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
+import { getActiveCode } from "@/lib/access";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import { RemovePostBtn, RemoveCommentBtn, RemoveMessageBtn, DisableUserBtn } from "@/components/AdminActions";
+import { AccessCodeControls, RoleSelect, GradeClassEditor, ParentLinker } from "@/components/AdminOnboarding";
+import { RoleBadge, ClassBadge } from "@/components/Badge";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +31,54 @@ export default async function AdminPage() {
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, email: true, role: true, disabled: true },
+    select: {
+      id: true, name: true, email: true, role: true, gradeClass: true, disabled: true,
+      childrenLinks: { select: { child: { select: { id: true, name: true } } } },
+    },
   });
+
+  // Students available to link as a parent's child.
+  const students = users
+    .filter((u) => u.role === "STUDENT")
+    .map((u) => ({ id: u.id, name: u.name }));
+
+  // School access code + QR (encodes the absolute /join link).
+  const code = await getActiveCode();
+  const h = headers();
+  const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
+  const proto = h.get("x-forwarded-proto") || "http";
+  const joinUrl = code ? `${proto}://${host}/join?code=${encodeURIComponent(code.code)}` : "";
+  const qrSvg = code ? await QRCode.toString(joinUrl, { type: "svg", margin: 1 }) : "";
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
         <h1 className="mb-1 text-lg font-semibold">Admin</h1>
-        <p className="mb-6 text-sm text-gray-500">Reported content and accounts. Function over polish.</p>
+        <p className="mb-6 text-sm text-gray-500">Onboarding, reported content, and accounts.</p>
+
+        {/* School access code */}
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">School access code</h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            {code ? (
+              <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+                <div className="h-32 w-32 shrink-0" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+                <div className="min-w-0 flex-1 text-center sm:text-left">
+                  <p className="text-xs text-gray-500">Share this code or QR with the school. Anyone with it can join as a Student.</p>
+                  <p className="my-2 select-all font-mono text-lg font-bold tracking-wider text-brand">{code.code}</p>
+                  <p className="mb-3 break-all text-xs text-gray-400">{joinUrl}</p>
+                  <AccessCodeControls hasCode={true} />
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="mb-3 text-sm text-gray-500">No active code — joining is currently closed.</p>
+                <AccessCodeControls hasCode={false} />
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Reports queue */}
         <section className="mb-8">
@@ -103,20 +147,37 @@ export default async function AdminPage() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
             Accounts ({users.length})
           </h2>
-          <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-            {users.map((u) => (
-              <li key={u.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-                <div className="min-w-0 flex-1">
-                  <Link href={`/u/${u.id}`} className="font-semibold hover:underline">{u.name}</Link>
-                  {u.role === "ADMIN" && <span className="ml-2 rounded bg-accent/30 px-1.5 py-0.5 text-[11px] font-semibold text-brand">admin</span>}
-                  {u.disabled && <span className="ml-2 text-[11px] font-semibold text-red-600">disabled</span>}
-                  <p className="truncate text-xs text-gray-400">{u.email}</p>
-                </div>
-                {u.id === viewer.id
-                  ? <span className="text-xs text-gray-400">you</span>
-                  : <DisableUserBtn userId={u.id} disabled={u.disabled} />}
-              </li>
-            ))}
+          <ul className="space-y-2">
+            {users.map((u) => {
+              const isSelf = u.id === viewer.id;
+              const children = u.childrenLinks.map((l) => l.child);
+              return (
+                <li key={u.id} className="rounded-xl border border-gray-200 bg-white p-4 text-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/u/${u.id}`} className="font-semibold hover:underline">{u.name}</Link>
+                        <RoleBadge role={u.role} />
+                        <ClassBadge gradeClass={u.gradeClass} />
+                        {u.disabled && <span className="text-[11px] font-semibold text-red-600">disabled</span>}
+                        {isSelf && <span className="text-[11px] text-gray-400">you</span>}
+                      </div>
+                      <p className="truncate text-xs text-gray-400">{u.email}</p>
+                    </div>
+                    {!isSelf && <DisableUserBtn userId={u.id} disabled={u.disabled} />}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <RoleSelect userId={u.id} role={u.role} isSelf={isSelf} />
+                    <GradeClassEditor userId={u.id} gradeClass={u.gradeClass} />
+                  </div>
+
+                  {u.role === "PARENT" && (
+                    <ParentLinker parentId={u.id} students={students} children={children} />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       </main>

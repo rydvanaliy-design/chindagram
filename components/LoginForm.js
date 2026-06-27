@@ -37,7 +37,7 @@ export default function LoginForm() {
       </form>
       <p className="mt-4 text-center text-sm text-gray-500">
         New here?{" "}
-        <Link href="/register" className="font-semibold text-brand">Create an account</Link>
+        <Link href="/join" className="font-semibold text-brand">Join with your school code</Link>
       </p>
     </AuthShell>
   );
