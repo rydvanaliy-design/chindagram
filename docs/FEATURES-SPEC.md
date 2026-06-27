@@ -13,11 +13,11 @@ Product identity (keep these front of mind):
 
 ---
 
-## Decisions to confirm (owner: override any before building)
-1. **Per-post audience:** account privacy controls who sees your posts; there is **no per-post audience picker**. ("Everyone" in the interview = no extra per-post restriction beyond account privacy.)
-2. **Pre-moderation scope:** every post and comment runs through an **automated word/image filter**; anything it flags is **held for admin/teacher review** before going public. A school-wide setting can optionally switch to "**all student posts require approval**," but that is **off by default** (approving every post by hand doesn't scale even at 200 users). Confirm if you want it ON.
-3. **DM privacy vs moderation:** DMs are private and **only become visible to moderators when a message is reported** (matches your answer). Realtime delivery is included.
-4. **Onboarding by QR:** the school generates **invite codes (shown as QR codes)** that encode a role + (optionally) a class. Scanning opens a join page where the person sets their display name and password. Login stays email/username + password afterward. Confirm whether QR should be **per-person**, **per-class**, or **one school-wide code**.
+## Confirmed decisions (final)
+1. **Privacy:** account privacy controls who sees your posts; there is **no per-post audience picker**. **Teacher and Admin accounts are always fully public** and post to everyone. **Student and Parent accounts default to private**, and the user can switch them between private and public.
+2. **Pre-moderation scope:** every post and comment runs through an **automated word/image filter**; anything it flags is **held for admin/teacher review** before going public. Hand-approving every post is **off by default** (doesn't scale); a school-wide setting can turn full pre-approval on later.
+3. **DM privacy vs moderation:** DMs are private and **only become visible to moderators when a message is reported.** Realtime delivery is included.
+4. **Onboarding:** **one school-wide QR/access code** is purely an **entry gate** (proof the person belongs to the school) to reach the join page. After passing it, a person creates their account and joins **as a Student by default**; **admins assign Teacher/Parent/Admin roles afterward** and link parents to their child. (A single shared code can't safely encode roles, so roles are assigned by admins, never self-selected.)
 5. **Heavy features phased:** **live streaming** and **realtime voice/typing** need extra services; see Phasing. Everything else is core.
 
 ---
@@ -34,7 +34,7 @@ Roles: **Student, Teacher, Parent, Admin** (Admin is also a staff member). Every
 | Create clubs/classes & events | No | No | **Yes** | Yes |
 | Review reported/flagged posts & comments | No | No | **Yes** | Yes |
 | Full moderation (remove anything, disable accounts, see reports dashboard, broadcast) | No | No | No | **Yes** |
-| Account visibility | Private by default, can change | Linked to child (see below) | **Always public** | **Always public** |
+| Account visibility | Private by default, can change | Private by default, can change (also linked to child) | **Always public** | **Always public** |
 
 **Parent accounts:** linked to one or more student accounts as a lightweight **connection**. A parent can see the child's profile and public posts and that the account is active. A parent **cannot** see DMs or private activity. No screen-time or parental control tools (owner declined).
 
@@ -42,11 +42,12 @@ Roles: **Student, Teacher, Parent, Admin** (Admin is also a staff member). Every
 
 ---
 
-## Onboarding (QR / invite codes)
-- Admins generate **invite codes** rendered as **QR codes**, distributed within the school.
-- A code carries a **role** and optional **class/grade**. Scanning opens `/join/[code]` → set display name + password → account created with that role/class, already badged.
-- Disable/expire codes from the admin panel. Keep the existing first-account-is-admin bootstrap for initial setup.
-- Replaces open email signup. (This is the school-account lockdown the earlier docs flagged as the top pre-launch task.)
+## Onboarding (one school-wide access code / QR)
+- The school has **one shared access code**, shown as a **QR code**, distributed within the school community. It is purely an **authentication gate** proving the person belongs to the school.
+- Scanning or entering the code opens `/join` → the person sets display name + email/username + password → account created **as a Student** by default.
+- **Roles are assigned by admins afterward:** admins promote accounts to Teacher/Parent/Admin and link parent accounts to their child(ren). A single shared code can't safely carry a role, so self-selecting Teacher/Admin is not allowed.
+- Admins can **rotate/disable** the school code from the admin panel. Keep the existing first-account-is-admin bootstrap for initial setup.
+- Replaces open email signup (the school-account lockdown flagged earlier as the top pre-launch task).
 
 ---
 
@@ -127,7 +128,7 @@ Include **caption suggestions**, **EN↔TH translation** of captions/comments, a
 - Not included (owner declined): parental controls, screen-time limits, younger-student default lockdowns.
 
 ## Privacy & permissions
-- **Student accounts default to private.**
+- **Student and Parent accounts default to private; the user can switch them public. Teacher and Admin accounts are always public.**
 - No per-post audience picker (Decision #1).
 - **Anyone can comment / anyone can DM** at the user level (no per-user restriction toggles in v2).
 
