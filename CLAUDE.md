@@ -62,6 +62,9 @@ Accounts; posts (single, multi-photo carousel, video reels); stories (24h); feed
 - Video is stored on local disk — fine for dev, needs a video host for production.
 - No automated tests yet; logic has been validated manually. Adding tests is worthwhile.
 
+## v2 roadmap
+The owner has defined a full next-version feature set in **`docs/FEATURES-SPEC.md`** — roles/QR onboarding, communities, events, richer messaging, moderation pipeline, bilingual UI, and more. Read it before planning v2 work, and follow its "Suggested build order". Note the "Decisions to confirm" at the top.
+
 ## When you make changes
 - After schema edits: `npx prisma migrate dev --name <change>`.
 - Verify with `npm run build` and the manual test flow in `README.md`.
