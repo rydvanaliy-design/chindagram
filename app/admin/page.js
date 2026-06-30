@@ -53,7 +53,8 @@ export default async function AdminPage() {
 
   const approvalOn = await requireApproval();
   const pendingCount = await prisma.post.count({ where: { status: "PENDING", removed: false } })
-    + await prisma.comment.count({ where: { status: "PENDING", removed: false } });
+    + await prisma.comment.count({ where: { status: "PENDING", removed: false } })
+    + await prisma.wallPost.count({ where: { status: "PENDING", removed: false } });
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

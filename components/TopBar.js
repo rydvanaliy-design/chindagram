@@ -15,7 +15,8 @@ export default async function TopBar() {
     if (isStaff) {
       try {
         toReview = await prisma.post.count({ where: { status: "PENDING", removed: false } })
-          + await prisma.comment.count({ where: { status: "PENDING", removed: false } });
+          + await prisma.comment.count({ where: { status: "PENDING", removed: false } })
+          + await prisma.wallPost.count({ where: { status: "PENDING", removed: false } });
       } catch {}
     }
   }

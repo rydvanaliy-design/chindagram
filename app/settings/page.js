@@ -11,7 +11,13 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { id: viewer.id }, select: { id: true, name: true, bio: true, image: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: viewer.id },
+    select: {
+      id: true, name: true, username: true, bio: true, image: true,
+      pronouns: true, interests: true, links: true, theme: true,
+    },
+  });
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

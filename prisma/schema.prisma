@@ -13,10 +13,15 @@ datasource db {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
+  username     String?  @unique // @handle, used for mentions and profile links
   name         String
   passwordHash String
   bio          String?
   image        String?
+  pronouns     String?
+  interests    String?  // comma-separated
+  links        String?  // newline-separated URLs
+  theme        String   @default("default") // profile accent theme
   role         String   @default("STUDENT") // STUDENT | PARENT | TEACHER | ADMIN
   gradeClass   String?  // e.g. "Class 6B" — shown as a badge
   disabled     Boolean  @default(false)
@@ -41,6 +46,34 @@ model User {
   // Parent <-> child links (a Parent account can be linked to one or more Students)
   childrenLinks ParentLink[] @relation("parentSide")
   parentLinks   ParentLink[] @relation("childSide")
+
+  pollVotes PollVote[]
+
+  // Profile wall: posts I wrote on walls, and posts written on my wall.
+  wallPostsWritten WallPost[] @relation("wallAuthor")
+  wallPostsOnMine  WallPost[] @relation("wallOwner")
+
+  collaborations PostCollaborator[]
+}
+
+// A post written on someone's profile wall. Moderated like everything else.
+model WallPost {
+  id         String   @id @default(cuid())
+  body       String
+  removed    Boolean  @default(false)
+  status     String   @default("VISIBLE") // VISIBLE | PENDING
+  flagReason String?
+  createdAt  DateTime @default(now())
+
+  ownerId  String
+  owner    User   @relation("wallOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation("wallAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  reports Report[]
+
+  @@index([ownerId, createdAt])
+  @@index([status])
 }
 
 // Simple key/value store for school-wide settings (e.g. requireApproval).
@@ -78,8 +111,11 @@ model ParentLink {
 
 model Post {
   id         String   @id @default(cuid())
-  kind       String   @default("PHOTO") // PHOTO | REEL
+  kind       String   @default("PHOTO") // PHOTO | REEL | TEXT | LINK | POLL | AUDIO | DOCUMENT
   caption    String?
+  linkUrl    String?  // for LINK posts
+  category   String   @default("NONE") // NONE | ANNOUNCEMENT | ACHIEVEMENT | TIMETABLE | LOSTFOUND (school posts)
+  pinned     Boolean  @default(false)  // pinned to the author's profile
   removed    Boolean  @default(false)
   status     String   @default("VISIBLE") // VISIBLE | PENDING (held for review)
   flagReason String?  // why the auto-filter held it (shown to reviewers)
@@ -88,22 +124,70 @@ model Post {
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  media    PostMedia[]
-  comments Comment[]
-  likes    Like[]
-  saves    Save[]
-  reports  Report[]
+  media         PostMedia[]
+  comments      Comment[]
+  likes         Like[]
+  saves         Save[]
+  reports       Report[]
+  pollOptions   PollOption[]
+  pollVotes     PollVote[]
+  collaborators PostCollaborator[]
 
   @@index([authorId, createdAt])
   @@index([kind, createdAt])
   @@index([status, createdAt])
 }
 
-model PostMedia {
+// Co-authored posts: an invited user (accepted) co-owns a post; it appears on
+// both profiles and both are shown as authors.
+model PostCollaborator {
+  id        String   @id @default(cuid())
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId, accepted])
+}
+
+// Poll options + votes (for kind = POLL). One vote per user per poll.
+model PollOption {
   id    String @id @default(cuid())
-  url   String
-  type  String @default("IMAGE")
+  text  String
   order Int    @default(0)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  votes  PollVote[]
+
+  @@index([postId])
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  postId   String
+  post     Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  optionId String
+  option   PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([optionId])
+}
+
+model PostMedia {
+  id    String  @id @default(cuid())
+  url   String
+  type  String  @default("IMAGE") // IMAGE | VIDEO | AUDIO | DOCUMENT
+  name  String? // original filename (for audio/document downloads)
+  order Int     @default(0)
 
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -248,6 +332,8 @@ model Report {
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   messageId String?
   message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  wallPostId String?
+  wallPost   WallPost? @relation(fields: [wallPostId], references: [id], onDelete: Cascade)
 
   @@index([status])
 }

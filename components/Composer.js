@@ -1,13 +1,32 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CATEGORIES, CATEGORY_LABELS } from "@/lib/postkinds";
 
-export default function Composer() {
+// Post types the composer can create. More are added in later parts.
+const TYPES = [
+  { key: "photo", label: "Photo / Video" },
+  { key: "text", label: "Text" },
+  { key: "link", label: "Link" },
+  { key: "poll", label: "Poll" },
+  { key: "audio", label: "Audio" },
+  { key: "document", label: "File" },
+];
+
+const DOC_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,application/pdf,text/plain";
+
+export default function Composer({ isStaff = false }) {
   const router = useRouter();
+  const [type, setType] = useState("photo");
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [isVideo, setIsVideo] = useState(false);
   const [caption, setCaption] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [attachment, setAttachment] = useState(null);
+  const [collaborator, setCollaborator] = useState("");
+  const [category, setCategory] = useState("NONE");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [held, setHeld] = useState(false);
@@ -16,7 +35,6 @@ export default function Composer() {
     const picked = Array.from(e.target.files || []);
     setError("");
     if (picked.length === 0) { setFiles([]); setPreviews([]); return; }
-
     const video = picked.find((f) => f.type.startsWith("video/"));
     if (video) {
       setIsVideo(true);
@@ -32,12 +50,27 @@ export default function Composer() {
 
   async function onSubmit(e) {
     e.preventDefault();
-    if (files.length === 0) { setError("Choose photos or a video first."); return; }
-    setBusy(true); setError("");
+    setError("");
+    if (type === "photo" && files.length === 0) { setError("Choose photos or a video first."); return; }
+    if (type === "text" && !caption.trim()) { setError("Write something for your post."); return; }
+    if (type === "link" && !linkUrl.trim()) { setError("Add a link."); return; }
+    if ((type === "audio" || type === "document") && !attachment) { setError("Choose a file to upload."); return; }
+    const cleanOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
+    if (type === "poll") {
+      if (!caption.trim()) { setError("Add a poll question."); return; }
+      if (cleanOptions.length < 2) { setError("A poll needs at least two options."); return; }
+    }
+    setBusy(true);
 
     const form = new FormData();
-    files.forEach((f) => form.append("media", f));
+    form.append("kind", type === "photo" ? "" : type.toUpperCase());
     form.append("caption", caption);
+    form.append("category", category);
+    if (type === "link") form.append("linkUrl", linkUrl);
+    if (type === "poll") cleanOptions.forEach((o) => form.append("option", o));
+    if (type === "photo") files.forEach((f) => form.append("media", f));
+    if (type === "audio" || type === "document") form.append("media", attachment);
+    if (collaborator.trim()) form.append("collaborator", collaborator.trim());
 
     const res = await fetch("/api/posts", { method: "POST", body: form });
     if (!res.ok) {
@@ -48,12 +81,11 @@ export default function Composer() {
     }
     const d = await res.json().catch(() => ({}));
     if (d.status === "PENDING") {
-      // Held by the filter — tell the author instead of dropping them into the feed.
       setHeld(true);
       setBusy(false);
       return;
     }
-    router.push(isVideo ? "/reels" : "/");
+    router.push(type === "photo" && isVideo ? "/reels" : "/");
     router.refresh();
   }
 
@@ -71,28 +103,106 @@ export default function Composer() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <label className="flex aspect-square w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
-        {previews.length === 0 ? (
-          <span className="px-6">Tap to choose photos (up to 10) or one video</span>
-        ) : isVideo ? (
-          <video src={previews[0]} className="h-full w-full object-cover" muted />
-        ) : (
-          <img src={previews[0]} alt="Preview" className="h-full w-full object-cover" />
-        )}
-        <input type="file" accept="image/*,video/*" multiple onChange={onPick} className="hidden" />
-      </label>
+      {/* Type picker */}
+      <div className="flex flex-wrap gap-2">
+        {TYPES.map((t) => (
+          <button type="button" key={t.key} onClick={() => { setType(t.key); setError(""); }}
+            className={type === t.key
+              ? "rounded-full bg-brand px-3 py-1 text-sm font-semibold text-white"
+              : "rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-600"}>
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {previews.length > 1 && (
-        <div className="no-scrollbar flex gap-2 overflow-x-auto">
-          {previews.map((src, i) => (
-            <img key={i} src={src} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+      {type === "photo" && (
+        <>
+          <label className="flex aspect-square w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
+            {previews.length === 0 ? (
+              <span className="px-6">Tap to choose photos (up to 10) or one video</span>
+            ) : isVideo ? (
+              <video src={previews[0]} className="h-full w-full object-cover" muted />
+            ) : (
+              <img src={previews[0]} alt="Preview" className="h-full w-full object-cover" />
+            )}
+            <input type="file" accept="image/*,video/*" multiple onChange={onPick} className="hidden" />
+          </label>
+          {previews.length > 1 && (
+            <div className="no-scrollbar flex gap-2 overflow-x-auto">
+              {previews.map((src, i) => (
+                <img key={i} src={src} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+              ))}
+            </div>
+          )}
+          {isVideo && <p className="text-xs text-gray-500">This will be posted as a Reel.</p>}
+        </>
+      )}
+
+      {type === "link" && (
+        <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://…" inputMode="url"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
+      )}
+
+      {(type === "audio" || type === "document") && (
+        <label className="flex cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+          {attachment ? (
+            <span className="truncate font-medium text-gray-800">{type === "audio" ? "🎵 " : "📄 "}{attachment.name}</span>
+          ) : (
+            <span>{type === "audio" ? "Choose an audio file (MP3, WAV, M4A…)" : "Choose a file (PDF, Word, PowerPoint, Excel, text)"}</span>
+          )}
+          <input type="file" accept={type === "audio" ? "audio/*" : DOC_ACCEPT}
+            onChange={(e) => { setAttachment(e.target.files?.[0] || null); setError(""); }} className="hidden" />
+        </label>
+      )}
+
+      <textarea value={caption} onChange={(e) => setCaption(e.target.value)}
+        placeholder={type === "text" ? "What's on your mind?" : type === "poll" ? "Ask a question…" : "Write a caption…"} rows={type === "poll" ? 2 : 3}
+        className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
+
+      {type === "poll" && (
+        <div className="space-y-2">
+          {pollOptions.map((opt, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input value={opt} maxLength={120}
+                onChange={(e) => setPollOptions((arr) => arr.map((v, j) => (j === i ? e.target.value : v)))}
+                placeholder={`Option ${i + 1}`}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
+              {pollOptions.length > 2 && (
+                <button type="button" onClick={() => setPollOptions((arr) => arr.filter((_, j) => j !== i))}
+                  className="text-gray-400 hover:text-red-600" title="Remove option">✕</button>
+              )}
+            </div>
           ))}
+          {pollOptions.length < 6 && (
+            <button type="button" onClick={() => setPollOptions((arr) => [...arr, ""])}
+              className="text-sm font-semibold text-brand">+ Add option</button>
+          )}
         </div>
       )}
-      {isVideo && <p className="text-xs text-gray-500">This will be posted as a Reel.</p>}
 
-      <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Write a caption…" rows={3}
-        className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
+      {/* Optional co-author */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-500">Co-author <span className="text-gray-400">(optional — their @username)</span></label>
+        <div className="flex items-center gap-1">
+          <span className="text-gray-400">@</span>
+          <input value={collaborator} onChange={(e) => setCollaborator(e.target.value)} placeholder="username"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
+        </div>
+      </div>
+
+      {/* School content type — teachers/admins only */}
+      {isStaff && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500">School content type</label>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand">
+            <option value="NONE">Regular post</option>
+            {CATEGORIES.filter((c) => c !== "NONE").map((c) => (
+              <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button type="submit" disabled={busy} className="ig-btn py-2.5">{busy ? "Posting…" : "Share"}</button>

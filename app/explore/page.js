@@ -22,8 +22,9 @@ export default async function ExplorePage({ searchParams }) {
       })
     : [];
 
+  // Explore is a visual grid — show only posts that have an image or video.
   const recent = await prisma.post.findMany({
-    where: { removed: false, status: "VISIBLE" },
+    where: { removed: false, status: "VISIBLE", media: { some: { type: { in: ["IMAGE", "VIDEO"] } } } },
     orderBy: { createdAt: "desc" },
     take: 30,
     select: { id: true, kind: true, media: { orderBy: { order: "asc" }, take: 1, select: { url: true, type: true } } },

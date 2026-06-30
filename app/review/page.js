@@ -33,19 +33,25 @@ export default async function ReviewPage() {
     orderBy: { createdAt: "asc" },
     include: { author: { select: { name: true } } },
   });
+  const heldWallPosts = await prisma.wallPost.findMany({
+    where: { status: "PENDING", removed: false },
+    orderBy: { createdAt: "asc" },
+    include: { author: { select: { name: true } }, owner: { select: { name: true } } },
+  });
 
-  // Reported (user-flagged) posts and comments that are still open.
+  // Reported (user-flagged) posts, comments and wall posts that are still open.
   const reports = await prisma.report.findMany({
-    where: { status: "OPEN", OR: [{ postId: { not: null } }, { commentId: { not: null } }] },
+    where: { status: "OPEN", OR: [{ postId: { not: null } }, { commentId: { not: null } }, { wallPostId: { not: null } }] },
     orderBy: { createdAt: "desc" },
     include: {
       reporter: { select: { name: true } },
       post: { include: { author: { select: { name: true } }, media: { orderBy: { order: "asc" }, take: 1 } } },
       comment: { include: { author: { select: { name: true } } } },
+      wallPost: { include: { author: { select: { name: true } }, owner: { select: { name: true } } } },
     },
   });
 
-  const heldCount = heldPosts.length + heldComments.length;
+  const heldCount = heldPosts.length + heldComments.length + heldWallPosts.length;
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -94,6 +100,18 @@ export default async function ReviewPage() {
                   </div>
                 </li>
               ))}
+              {heldWallPosts.map((w) => (
+                <li key={w.id} className="rounded-xl border border-amber-200 bg-white p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1 text-sm">
+                      <p className="font-semibold">Wall post by {w.author.name} <span className="font-normal text-gray-400">on {w.owner.name}’s wall</span></p>
+                      <p className="text-gray-600">{w.body}</p>
+                      {w.flagReason && <p className="mt-1 text-xs text-amber-600">{w.flagReason}</p>}
+                    </div>
+                    <ReviewActions type="wallpost" id={w.id} />
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
         </section>
@@ -135,6 +153,17 @@ export default async function ReviewPage() {
                       {r.comment.removed
                         ? <span className="text-xs font-semibold text-gray-400">Removed</span>
                         : <ReviewActions type="comment" id={r.comment.id} />}
+                    </div>
+                  )}
+                  {r.wallPost && (
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1 text-sm">
+                        <p className="font-semibold">Wall post by {r.wallPost.author.name} <span className="font-normal text-gray-400">on {r.wallPost.owner.name}’s wall</span></p>
+                        <p className="text-gray-600">{r.wallPost.body}</p>
+                      </div>
+                      {r.wallPost.removed
+                        ? <span className="text-xs font-semibold text-gray-400">Removed</span>
+                        : <ReviewActions type="wallpost" id={r.wallPost.id} />}
                     </div>
                   )}
                 </li>

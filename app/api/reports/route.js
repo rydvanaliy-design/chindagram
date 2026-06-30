@@ -6,8 +6,8 @@ export async function POST(req) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const { postId, commentId, messageId, reason } = await req.json();
-  if (!postId && !commentId && !messageId) return NextResponse.json({ error: "Nothing to report." }, { status: 400 });
+  const { postId, commentId, messageId, wallPostId, reason } = await req.json();
+  if (!postId && !commentId && !messageId && !wallPostId) return NextResponse.json({ error: "Nothing to report." }, { status: 400 });
 
   if (messageId) {
     const msg = await prisma.message.findUnique({ where: { id: messageId }, include: { conversation: true } });
@@ -22,6 +22,7 @@ export async function POST(req) {
       postId: postId || null,
       commentId: commentId || null,
       messageId: messageId || null,
+      wallPostId: wallPostId || null,
       reason: reason ? String(reason).slice(0, 500) : null,
     },
   });

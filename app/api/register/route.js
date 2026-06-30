@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { isBootstrap, verifyCode } from "@/lib/access";
+import { uniqueUsername } from "@/lib/username";
 
 export async function POST(req) {
   try {
@@ -40,12 +41,14 @@ export async function POST(req) {
     }
 
     const passwordHash = await bcrypt.hash(cleanPassword, 10);
+    const username = await uniqueUsername(cleanEmail.split("@")[0] || cleanName);
 
     // Everyone joins as a Student by default; admins assign other roles later.
     await prisma.user.create({
       data: {
         name: cleanName,
         email: cleanEmail,
+        username,
         passwordHash,
         role: isFirst ? "ADMIN" : "STUDENT",
       },

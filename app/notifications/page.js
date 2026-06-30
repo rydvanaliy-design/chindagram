@@ -8,7 +8,7 @@ import Avatar from "@/components/Avatar";
 
 export const dynamic = "force-dynamic";
 
-const TEXT = { LIKE: "liked your post", COMMENT: "commented on your post", FOLLOW: "started following you", MESSAGE: "sent you a message" };
+const TEXT = { LIKE: "liked your post", COMMENT: "commented on your post", FOLLOW: "started following you", MESSAGE: "sent you a message", MENTION: "mentioned you in a post", COLLAB: "invited you to co-author a post" };
 function linkFor(n) {
   if (n.type === "FOLLOW") return `/u/${n.actor.id}`;
   if (n.type === "MESSAGE") return "/messages";

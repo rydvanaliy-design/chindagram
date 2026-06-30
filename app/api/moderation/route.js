@@ -11,8 +11,20 @@ export async function POST(req) {
   if (!mod) return NextResponse.json({ error: "Teachers or admins only." }, { status: 403 });
 
   const { type, id, action } = await req.json().catch(() => ({}));
-  if (!["post", "comment"].includes(type) || !id || !["approve", "remove"].includes(action)) {
+  if (!["post", "comment", "wallpost"].includes(type) || !id || !["approve", "remove"].includes(action)) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  }
+
+  if (type === "wallpost") {
+    const wp = await prisma.wallPost.findUnique({ where: { id }, select: { id: true } });
+    if (!wp) return NextResponse.json({ error: "Wall post not found." }, { status: 404 });
+    if (action === "approve") {
+      await prisma.wallPost.update({ where: { id }, data: { status: "VISIBLE", flagReason: null } });
+    } else {
+      await prisma.wallPost.update({ where: { id }, data: { removed: true } });
+    }
+    await prisma.report.updateMany({ where: { wallPostId: id, status: "OPEN" }, data: { status: "RESOLVED" } });
+    return NextResponse.json({ ok: true });
   }
 
   if (type === "post") {

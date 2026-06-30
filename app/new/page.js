@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/guards";
+import { canModerateContent } from "@/lib/roles";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import Composer from "@/components/Composer";

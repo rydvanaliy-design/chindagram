@@ -2,11 +2,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import { THEMES, THEME_KEYS } from "@/lib/themes";
 
 export default function SettingsForms({ user }) {
   const router = useRouter();
   const [name, setName] = useState(user.name || "");
+  const [username, setUsername] = useState(user.username || "");
   const [bio, setBio] = useState(user.bio || "");
+  const [pronouns, setPronouns] = useState(user.pronouns || "");
+  const [interests, setInterests] = useState(user.interests || "");
+  const [links, setLinks] = useState(user.links || "");
+  const [theme, setTheme] = useState(user.theme || "default");
   const [avatarPreview, setAvatarPreview] = useState(user.image || "");
   const [avatarFile, setAvatarFile] = useState(null);
   const [pMsg, setPMsg] = useState("");
@@ -29,7 +35,12 @@ export default function SettingsForms({ user }) {
     setSavingProfile(true); setPMsg("");
     const form = new FormData();
     form.append("name", name);
+    form.append("username", username);
     form.append("bio", bio);
+    form.append("pronouns", pronouns);
+    form.append("interests", interests);
+    form.append("links", links);
+    form.append("theme", theme);
     if (avatarFile) form.append("avatar", avatarFile);
     const res = await fetch("/api/settings/profile", { method: "POST", body: form });
     setSavingProfile(false);
@@ -60,8 +71,27 @@ export default function SettingsForms({ user }) {
         </div>
         <label className="mb-1 block text-xs font-medium text-gray-500">Name</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="ig-input mb-3" />
+        <label className="mb-1 block text-xs font-medium text-gray-500">Username</label>
+        <div className="mb-3 flex items-center gap-1">
+          <span className="text-gray-400">@</span>
+          <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="ig-input" />
+        </div>
+        <label className="mb-1 block text-xs font-medium text-gray-500">Pronouns</label>
+        <input value={pronouns} onChange={(e) => setPronouns(e.target.value)} placeholder="she/her, he/him, they/them…" maxLength={40} className="ig-input mb-3" />
         <label className="mb-1 block text-xs font-medium text-gray-500">Bio</label>
         <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={300} className="ig-input mb-3 resize-none" />
+        <label className="mb-1 block text-xs font-medium text-gray-500">Interests <span className="text-gray-400">(comma-separated)</span></label>
+        <input value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="art, football, coding" maxLength={200} className="ig-input mb-3" />
+        <label className="mb-1 block text-xs font-medium text-gray-500">Links <span className="text-gray-400">(one per line)</span></label>
+        <textarea value={links} onChange={(e) => setLinks(e.target.value)} rows={2} placeholder="https://…" maxLength={500} className="ig-input mb-3 resize-none" />
+        <label className="mb-1 block text-xs font-medium text-gray-500">Profile theme</label>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {THEME_KEYS.map((k) => (
+            <button type="button" key={k} onClick={() => setTheme(k)}
+              title={THEMES[k].label}
+              className={`h-8 w-8 rounded-full ${THEMES[k].chip} ${theme === k ? "ring-2 ring-offset-2 ring-gray-800" : ""}`} />
+          ))}
+        </div>
         <div className="flex items-center gap-3">
           <button disabled={savingProfile} className="ig-btn">{savingProfile ? "Saving…" : "Save profile"}</button>
           {pMsg && <span className="text-sm text-gray-500">{pMsg}</span>}
