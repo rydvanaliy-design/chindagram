@@ -72,6 +72,9 @@ model User {
 
   clubsCreated Club[]
   clubMemberships ClubMember[]
+
+  commentLikes CommentLike[]
+  saveCollections SaveCollection[]
 }
 
 // Mutual friend request. Becomes a real "friendship" once accepted — check
@@ -204,7 +207,7 @@ model ParentLink {
 
 model Post {
   id         String   @id @default(cuid())
-  kind       String   @default("PHOTO") // PHOTO | REEL | TEXT | LINK | POLL | AUDIO | DOCUMENT
+  kind       String   @default("PHOTO") // PHOTO | REEL | TEXT | LINK | POLL | AUDIO | DOCUMENT | REPOST
   caption    String?
   linkUrl    String?  // for LINK posts
   category   String   @default("NONE") // NONE | ANNOUNCEMENT | ACHIEVEMENT | TIMETABLE | LOSTFOUND (school posts)
@@ -217,6 +220,12 @@ model Post {
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  // Reposting to your own feed (kind = REPOST). SetNull if the original is
+  // deleted later — the repost stays as your own content, just unlinked.
+  repostOfId String?
+  repostOf   Post?   @relation("PostRepost", fields: [repostOfId], references: [id], onDelete: SetNull)
+  reposts    Post[]  @relation("PostRepost")
+
   media         PostMedia[]
   comments      Comment[]
   likes         Like[]
@@ -225,6 +234,8 @@ model Post {
   pollOptions   PollOption[]
   pollVotes     PollVote[]
   collaborators PostCollaborator[]
+  sharedInMessages Message[]
+  repostedToStories Story[]
 
   @@index([authorId, createdAt])
   @@index([kind, createdAt])
@@ -290,13 +301,17 @@ model PostMedia {
 
 model Story {
   id        String   @id @default(cuid())
-  imageUrl  String
+  imageUrl  String?  // null when this story is a repost of a post (repostOfId set instead)
   type      String   @default("IMAGE")
   createdAt DateTime @default(now())
   expiresAt DateTime
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Reposting a post to your story — SetNull if the original is later deleted.
+  repostOfId String?
+  repostOf   Post?   @relation(fields: [repostOfId], references: [id], onDelete: SetNull)
 
   @@index([expiresAt])
   @@index([authorId])
@@ -305,6 +320,9 @@ model Story {
 model Comment {
   id         String   @id @default(cuid())
   body       String
+  mediaUrl   String?  // an attached image or a built-in GIF
+  mediaType  String?  // IMAGE | GIF
+  pinned     Boolean  @default(false) // the post author (or a moderator) pinned this to the top
   removed    Boolean  @default(false)
   status     String   @default("VISIBLE") // VISIBLE | PENDING (held for review)
   flagReason String?
@@ -315,14 +333,35 @@ model Comment {
   postId   String
   post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  reports  Report[]
+  // One level of threaded replies — a reply's parentId points at a top-level comment.
+  parentId String?
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  reports Report[]
+  likes   CommentLike[]
 
   @@index([postId])
   @@index([status])
+  @@index([parentId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([commentId])
 }
 
 model Like {
   id        String   @id @default(cuid())
+  type      String   @default("HEART") // HEART | LAUGH | THUMBSUP | PARTY | CLAP — one reaction per user per post
   createdAt DateTime @default(now())
 
   userId String
@@ -343,8 +382,26 @@ model Save {
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
+  // Optional folder. Deleting the folder un-files the save — it doesn't delete it.
+  collectionId String?
+  collection   SaveCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+
   @@unique([userId, postId])
   @@index([userId])
+  @@index([collectionId])
+}
+
+model SaveCollection {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  saves   Save[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
 }
 
 model Follow {
@@ -381,7 +438,7 @@ model Conversation {
 
 model Message {
   id        String   @id @default(cuid())
-  body      String
+  body      String   // may be empty when sharedPostId is set (sharing a post with no extra caption)
   removed   Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -389,6 +446,10 @@ model Message {
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String
   sender         User         @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Sharing a post into a DM — SetNull if the original is later deleted.
+  sharedPostId String?
+  sharedPost   Post?   @relation(fields: [sharedPostId], references: [id], onDelete: SetNull)
 
   reports Report[]
 

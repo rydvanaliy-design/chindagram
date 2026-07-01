@@ -6,7 +6,10 @@ import Avatar from "@/components/Avatar";
 import PostMedia from "@/components/PostMedia";
 import Poll from "@/components/Poll";
 import RichText from "@/components/RichText";
-import { Heart, HeartFilled, Comment as CommentIcon, Bookmark, BookmarkFilled, Flag } from "@/components/icons";
+import ReactionBar from "@/components/ReactionBar";
+import CommentItem from "@/components/CommentItem";
+import CommentComposer from "@/components/CommentComposer";
+import { Comment as CommentIcon, Bookmark, BookmarkFilled, Flag } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 import { CATEGORY_LABELS } from "@/lib/postkinds";
 
@@ -56,12 +59,8 @@ function DocCard({ media }) {
 export default function PostCard({ post, currentUserId, isAdmin }) {
   const router = useRouter();
   const [removed, setRemoved] = useState(false);
-  const [liked, setLiked] = useState(post.likedByMe);
-  const [likeCount, setLikeCount] = useState(post.likeCount);
   const [saved, setSaved] = useState(post.savedByMe);
   const [comments, setComments] = useState(post.comments);
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
   const [pinned, setPinned] = useState(post.pinned);
   const [invite, setInvite] = useState(post.myInvite);
   if (removed) return null;
@@ -82,26 +81,27 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
     if (res.ok) { const d = await res.json(); setPinned(d.pinned); router.refresh(); }
   }
 
-  async function toggleLike() {
-    setLiked((v) => !v); setLikeCount((c) => c + (liked ? -1 : 1));
-    const res = await fetch(`/api/posts/${post.id}/like`, { method: "POST" });
-    if (res.ok) { const d = await res.json(); setLiked(d.liked); setLikeCount(d.count); }
-  }
   async function toggleSave() {
     setSaved((v) => !v);
     const res = await fetch(`/api/posts/${post.id}/save`, { method: "POST" });
     if (res.ok) { const d = await res.json(); setSaved(d.saved); }
   }
-  async function addComment(e) {
-    e.preventDefault();
-    const text = draft.trim(); if (!text || busy) return;
-    setBusy(true);
-    const res = await fetch(`/api/posts/${post.id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text }) });
-    setBusy(false);
+  async function addComment(text, mediaUrl, mediaType) {
+    const res = await fetch(`/api/posts/${post.id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text, mediaUrl, mediaType }) });
     if (res.ok) {
       const d = await res.json();
       setComments((cs) => [...cs, { ...d.comment, pending: d.comment.status === "PENDING" }]);
-      setDraft("");
+    }
+  }
+  async function addReply(parentId, text) {
+    const res = await fetch(`/api/posts/${post.id}/comments`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text, parentId }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      const reply = { ...d.comment, pending: d.comment.status === "PENDING" };
+      // The API may auto-flatten a reply-to-a-reply onto its top-level parent.
+      setComments((cs) => cs.map((c) => c.id === d.comment.parentId ? { ...c, replies: [...c.replies, reply] } : c));
     }
   }
   async function report(target) {
@@ -116,11 +116,22 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
       : await fetch("/api/admin/remove-post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: post.id }) });
     if (res.ok) { setRemoved(true); router.refresh(); }
   }
-  async function deleteComment(c) {
-    const res = c.mine
-      ? await fetch(`/api/comments/${c.id}`, { method: "DELETE" })
-      : await fetch("/api/admin/remove-comment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commentId: c.id }) });
-    if (res.ok) setComments((cs) => cs.filter((x) => x.id !== c.id));
+  async function deleteComment(id) {
+    // Search top-level comments and one level of replies for the matching id.
+    let mine = false;
+    for (const c of comments) {
+      if (c.id === id) { mine = c.mine; break; }
+      const r = c.replies.find((x) => x.id === id);
+      if (r) { mine = r.mine; break; }
+    }
+    const res = mine
+      ? await fetch(`/api/comments/${id}`, { method: "DELETE" })
+      : await fetch("/api/admin/remove-comment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commentId: id }) });
+    if (res.ok) {
+      setComments((cs) => cs
+        .filter((c) => c.id !== id)
+        .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== id) })));
+    }
   }
 
   return (
@@ -190,17 +201,13 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
         </>
       ) : null}
 
-      <div className="flex items-center gap-4 px-4 pt-3 text-gray-900">
-        <button onClick={toggleLike} aria-label="Like" className="transition active:scale-90">
-          {liked ? <span className="text-red-500"><HeartFilled /></span> : <Heart />}
-        </button>
-        <span className="text-gray-700"><CommentIcon /></span>
-        <button onClick={toggleSave} aria-label="Save" className="ml-auto transition active:scale-90">
+      <div className="flex items-start gap-4 px-4 pt-3 text-gray-900">
+        <ReactionBar postId={post.id} initialMyReaction={post.myReaction} initialBreakdown={post.reactionBreakdown} initialTotal={post.totalReactions} />
+        <span className="pt-0.5 text-gray-700"><CommentIcon /></span>
+        <button onClick={toggleSave} aria-label="Save" className="ml-auto pt-0.5 transition active:scale-90">
           {saved ? <span className="text-brand"><BookmarkFilled /></span> : <Bookmark />}
         </button>
       </div>
-
-      {likeCount > 0 && <p className="px-4 pt-2 text-sm font-semibold">{likeCount} {likeCount === 1 ? "like" : "likes"}</p>}
 
       {post.caption && post.kind !== "TEXT" && post.kind !== "POLL" && (
         <p className="px-4 pt-1 text-sm">
@@ -210,27 +217,18 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
       )}
 
       {comments.length > 0 && (
-        <ul className="space-y-1 px-4 pt-2 text-sm">
+        <ul className="space-y-2 px-4 pt-2">
           {comments.map((c) => (
-            <li key={c.id} className="group flex items-start gap-2">
-              <span className="flex-1">
-                <Link href={`/u/${c.author.id}`} className="font-semibold hover:underline">{c.author.name}</Link>{" "}
-                <RichText text={c.body} />
-                {c.pending && <span className="ml-1 text-[11px] font-semibold text-amber-600">· pending review</span>}
-              </span>
-              <span className="flex shrink-0 items-center gap-2 opacity-0 transition group-hover:opacity-100">
-                {!c.mine && <button onClick={() => report({ commentId: c.id })} className="text-[11px] font-medium text-gray-400 hover:text-brand">report</button>}
-                {(c.mine || isAdmin) && <button onClick={() => deleteComment(c)} className="text-[11px] font-semibold text-red-600 hover:underline">delete</button>}
-              </span>
-            </li>
+            <CommentItem
+              key={c.id} comment={c} isAdmin={isAdmin} canPin={isOwner || isAdmin}
+              onReply={addReply} onDelete={deleteComment}
+              onReport={(id) => report({ commentId: id })}
+            />
           ))}
         </ul>
       )}
 
-      <form onSubmit={addComment} className="mt-2 flex items-center gap-2 border-t border-gray-100 px-4 py-3">
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add a comment…" className="flex-1 text-sm outline-none placeholder:text-gray-400" />
-        <button type="submit" disabled={!draft.trim() || busy} className="text-sm font-semibold text-brand disabled:text-gray-300">Post</button>
-      </form>
+      <CommentComposer onSubmit={addComment} />
     </article>
   );
 }

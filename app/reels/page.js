@@ -26,15 +26,16 @@ export default async function ReelsPage() {
     include: {
       author: { select: { id: true, name: true, image: true } },
       media: { orderBy: { order: "asc" }, take: 1 },
-      _count: { select: { likes: true } },
-      likes: { where: { userId: me }, select: { id: true } },
+      likes: { select: { type: true, userId: true } },
     },
   });
 
   const reels = rows.map((p) => ({
     id: p.id, caption: p.caption, author: p.author,
     videoUrl: p.media[0]?.url || null,
-    likeCount: p._count.likes, likedByMe: p.likes.length > 0,
+    totalReactions: p.likes.length,
+    myReaction: p.likes.find((l) => l.userId === me)?.type || null,
+    reactionBreakdown: p.likes.reduce((acc, l) => { acc[l.type] = (acc[l.type] || 0) + 1; return acc; }, {}),
   }));
 
   return (

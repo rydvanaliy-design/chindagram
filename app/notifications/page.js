@@ -9,10 +9,11 @@ import Avatar from "@/components/Avatar";
 export const dynamic = "force-dynamic";
 
 const TEXT = {
-  LIKE: "liked your post", COMMENT: "commented on your post", FOLLOW: "started following you",
+  LIKE: "reacted to your post", COMMENT: "commented on your post", FOLLOW: "started following you",
   MESSAGE: "sent you a message", MENTION: "mentioned you in a post", COLLAB: "invited you to co-author a post",
   FOLLOW_REQUEST: "asked to follow you", FOLLOW_ACCEPT: "approved your follow request",
   FRIEND_REQUEST: "wants to be friends", FRIEND_ACCEPT: "accepted your friend request",
+  COMMENT_REPLY: "replied to your comment", COMMENT_LIKE: "liked your comment",
 };
 function linkFor(n) {
   if (n.type === "FOLLOW_REQUEST" || n.type === "FRIEND_REQUEST") return "/requests";
