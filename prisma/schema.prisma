@@ -24,6 +24,7 @@ model User {
   theme        String   @default("default") // profile accent theme
   role         String   @default("STUDENT") // STUDENT | PARENT | TEACHER | ADMIN
   gradeClass   String?  // e.g. "Class 6B" — shown as a badge
+  private      Boolean  @default(true) // Student/Parent default private; Teacher/Admin are always public regardless of this flag
   disabled     Boolean  @default(false)
   createdAt    DateTime @default(now())
 

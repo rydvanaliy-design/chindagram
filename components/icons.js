@@ -18,4 +18,6 @@ export function ChevronRight() { return (<svg {...base}><path d="m9 6 6 6-6 6" /
 export function X() { return (<svg {...base}><path d="M6 6l12 12M18 6 6 18" /></svg>); }
 export function Bookmark() { return (<svg {...base}><path d="M6 3h12v18l-6-4-6 4Z" /></svg>); }
 export function BookmarkFilled() { return (<svg {...base} fill="currentColor"><path d="M6 3h12v18l-6-4-6 4Z" /></svg>); }
+export function Lock() { return (<svg {...base}><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>); }
+export function Key() { return (<svg {...base}><circle cx="8" cy="15" r="4" /><path d="M11 12 20 3" /><path d="m17 6 3 3" /><path d="m14 9 2.5 2.5" /></svg>); }
 export function Bell() { return (<svg {...base}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>); }

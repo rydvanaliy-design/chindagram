@@ -7,7 +7,6 @@ import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
 import FollowButton from "@/components/FollowButton";
 import BioEditor from "@/components/BioEditor";
-import LogoutButton from "@/components/LogoutButton";
 import { Reel } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 import Wall from "@/components/Wall";
@@ -83,8 +82,8 @@ export default async function ProfilePage({ params }) {
               {user.pronouns && <span className="text-sm text-gray-400">{user.pronouns}</span>}
               {isSelf ? (
                 <div className="flex items-center gap-2">
-                  <Link href="/settings" className="ig-btn-soft py-1.5">Edit profile</Link>
-                  <LogoutButton />
+                  <Link href="/settings/profile" className="ig-btn-soft py-1.5">Edit profile</Link>
+                  <Link href="/settings" className="ig-btn-soft py-1.5">Settings</Link>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
