@@ -11,7 +11,6 @@ import LogoutButton from "@/components/LogoutButton";
 import { Reel } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 import Wall from "@/components/Wall";
-import { visibleToViewer } from "@/lib/posts";
 import { themeOf } from "@/lib/themes";
 import { canModerateContent } from "@/lib/roles";
 
