@@ -7,6 +7,8 @@ import PostMedia from "@/components/PostMedia";
 import Poll from "@/components/Poll";
 import RichText from "@/components/RichText";
 import ReactionBar from "@/components/ReactionBar";
+import RepostMenu from "@/components/RepostMenu";
+import PostEmbed from "@/components/PostEmbed";
 import CommentItem from "@/components/CommentItem";
 import CommentComposer from "@/components/CommentComposer";
 import { Comment as CommentIcon, Bookmark, BookmarkFilled, Flag } from "@/components/icons";
@@ -184,7 +186,12 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
         </div>
       )}
 
-      {post.kind === "AUDIO" && hasMedia ? (
+      {post.kind === "REPOST" ? (
+        <>
+          {post.caption && <p className="px-4 pb-2 text-[15px] text-gray-900"><RichText text={post.caption} /></p>}
+          <PostEmbed post={post.repostOf} className="mx-4 mb-1" />
+        </>
+      ) : post.kind === "AUDIO" && hasMedia ? (
         <AudioCard media={post.media[0]} />
       ) : post.kind === "DOCUMENT" && hasMedia ? (
         <DocCard media={post.media[0]} />
@@ -204,12 +211,13 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
       <div className="flex items-start gap-4 px-4 pt-3 text-gray-900">
         <ReactionBar postId={post.id} initialMyReaction={post.myReaction} initialBreakdown={post.reactionBreakdown} initialTotal={post.totalReactions} />
         <span className="pt-0.5 text-gray-700"><CommentIcon /></span>
+        <RepostMenu postId={post.id} />
         <button onClick={toggleSave} aria-label="Save" className="ml-auto pt-0.5 transition active:scale-90">
           {saved ? <span className="text-brand"><BookmarkFilled /></span> : <Bookmark />}
         </button>
       </div>
 
-      {post.caption && post.kind !== "TEXT" && post.kind !== "POLL" && (
+      {post.caption && post.kind !== "TEXT" && post.kind !== "POLL" && post.kind !== "REPOST" && (
         <p className="px-4 pt-1 text-sm">
           <Link href={`/u/${post.author.id}`} className="font-semibold hover:underline">{post.author.name}</Link>{" "}
           <RichText text={post.caption} />

@@ -44,12 +44,28 @@ export default async function FeedPage({ searchParams }) {
   const stories = await prisma.story.findMany({
     where: { expiresAt: { gt: new Date() }, authorId: { in: [me, ...followingIds] } },
     orderBy: { createdAt: "asc" },
-    include: { author: { select: { id: true, name: true, image: true } } },
+    include: {
+      author: { select: { id: true, name: true, image: true } },
+      repostOf: {
+        select: {
+          id: true, kind: true, caption: true, linkUrl: true, createdAt: true,
+          removed: true, status: true,
+          author: { select: { id: true, name: true, image: true } },
+          media: { orderBy: { order: "asc" } },
+        },
+      },
+    },
   });
   const storyMap = new Map();
   for (const s of stories) {
     if (!storyMap.has(s.authorId)) storyMap.set(s.authorId, { author: s.author, stories: [] });
-    storyMap.get(s.authorId).stories.push({ id: s.id, imageUrl: s.imageUrl });
+    const repostOf = s.repostOf ? {
+      id: s.repostOf.id, kind: s.repostOf.kind, caption: s.repostOf.caption, linkUrl: s.repostOf.linkUrl,
+      createdAt: s.repostOf.createdAt.toISOString(), author: s.repostOf.author,
+      media: s.repostOf.media.map((m) => ({ url: m.url, type: m.type, name: m.name })),
+      unavailable: s.repostOf.removed || (s.repostOf.status !== "VISIBLE" && s.repostOf.author.id !== me),
+    } : (s.repostOfId ? { unavailable: true } : null);
+    storyMap.get(s.authorId).stories.push({ id: s.id, imageUrl: s.imageUrl, repostOf });
   }
   const groups = [...storyMap.values()].sort((a, b) => (a.author.id === me ? -1 : b.author.id === me ? 1 : 0));
 

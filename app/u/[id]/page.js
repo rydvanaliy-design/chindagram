@@ -89,6 +89,7 @@ export default async function ProfilePage({ params }) {
       id: true, kind: true, status: true, pinned: true, caption: true, category: true,
       media: { orderBy: { order: "asc" }, take: 1, select: { url: true, type: true, name: true } },
       _count: { select: { media: true } },
+      repostOf: { select: { media: { orderBy: { order: "asc" }, take: 1, select: { url: true, type: true, name: true } } } },
     },
   }) : [];
 
@@ -199,10 +200,10 @@ export default async function ProfilePage({ params }) {
               ) : (
                 <div className="grid grid-cols-3 gap-1 sm:gap-2">
                   {posts.map((p) => {
-                    const thumb = p.media[0];
+                    const thumb = p.media[0] || p.repostOf?.media[0];
                     const isPhotoVideo = thumb && (thumb.type === "IMAGE" || thumb.type === "VIDEO");
                     const isVideo = p.kind === "REEL" || thumb?.type === "VIDEO";
-                    const tileLabel = { LINK: "Link", POLL: "Poll", AUDIO: "Audio", DOCUMENT: "File" }[p.kind] || "Text";
+                    const tileLabel = { LINK: "Link", POLL: "Poll", AUDIO: "Audio", DOCUMENT: "File", REPOST: "Repost" }[p.kind] || "Text";
                     return (
                       <Link key={p.id} href={`/p/${p.id}`} className="relative aspect-square overflow-hidden rounded-md bg-gray-100">
                         {isPhotoVideo ? (

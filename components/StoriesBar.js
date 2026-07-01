@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import PostEmbed from "@/components/PostEmbed";
 import { X } from "@/components/icons";
 
 export default function StoriesBar({ groups, me }) {
@@ -63,7 +64,13 @@ export default function StoriesBar({ groups, me }) {
             <span className="text-sm font-semibold">{activeAuthor.name}</span>
             <button onClick={(e) => { e.stopPropagation(); setViewer(null); }} className="ml-auto" aria-label="Close"><X /></button>
           </div>
-          <img src={active.imageUrl} alt="" className="max-h-[85vh] max-w-full object-contain" />
+          {active.repostOf ? (
+            <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <PostEmbed post={active.repostOf} />
+            </div>
+          ) : (
+            <img src={active.imageUrl} alt="" className="max-h-[85vh] max-w-full object-contain" />
+          )}
         </div>
       )}
     </div>

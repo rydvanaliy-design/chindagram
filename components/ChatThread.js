@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import PostEmbed from "@/components/PostEmbed";
 import { ChevronLeft, Send } from "@/components/icons";
 
 export default function ChatThread({ conversationId, me, other, initial, isAdmin }) {
@@ -57,9 +58,20 @@ export default function ChatThread({ conversationId, me, other, initial, isAdmin
               {!mine && !m.removed && (
                 <button onClick={() => report(m.id)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">report</button>
               )}
-              <span className={`max-w-[75%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${m.removed ? "bg-gray-100 italic text-gray-400" : mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
-                {m.removed ? "message removed" : m.body}
-              </span>
+              {!m.removed && m.sharedPost ? (
+                <div className="max-w-[75%]">
+                  <PostEmbed post={m.sharedPost} className="w-64 max-w-full" />
+                  {m.body && (
+                    <span className={`mt-1 block whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
+                      {m.body}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className={`max-w-[75%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${m.removed ? "bg-gray-100 italic text-gray-400" : mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
+                  {m.removed ? "message removed" : m.body}
+                </span>
+              )}
               {isAdmin && !m.removed && (
                 <button onClick={() => remove(m.id)} className="text-[11px] text-red-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600">remove</button>
               )}

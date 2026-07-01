@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/guards";
+import { toSharedPostProps, sharedPostInclude } from "@/lib/messages";
 
 export async function GET(req, { params }) {
   const me = await requireUserId();
@@ -13,8 +14,11 @@ export async function GET(req, { params }) {
   const where = { conversationId: convo.id };
   if (after) where.createdAt = { gt: new Date(after) };
 
-  const messages = await prisma.message.findMany({ where, orderBy: { createdAt: "asc" }, take: 100 });
+  const messages = await prisma.message.findMany({ where, orderBy: { createdAt: "asc" }, take: 100, include: { sharedPost: sharedPostInclude } });
   return NextResponse.json({
-    messages: messages.map((m) => ({ id: m.id, body: m.removed ? null : m.body, removed: m.removed, senderId: m.senderId, createdAt: m.createdAt.toISOString() })),
+    messages: messages.map((m) => ({
+      id: m.id, body: m.removed ? null : m.body, removed: m.removed, senderId: m.senderId, createdAt: m.createdAt.toISOString(),
+      sharedPost: m.removed ? null : toSharedPostProps(m.sharedPost, me),
+    })),
   });
 }

@@ -22,3 +22,4 @@ export function Lock() { return (<svg {...base}><rect x="4" y="10" width="16" he
 export function Key() { return (<svg {...base}><circle cx="8" cy="15" r="4" /><path d="M11 12 20 3" /><path d="m17 6 3 3" /><path d="m14 9 2.5 2.5" /></svg>); }
 export function Bell() { return (<svg {...base}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>); }
 export function MoreHorizontal() { return (<svg {...base} fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>); }
+export function Repost() { return (<svg {...base}><path d="M17 2 21 6l-4 4" /><path d="M3 12V9a3 3 0 0 1 3-3h15" /><path d="M7 22 3 18l4-4" /><path d="M21 12v3a3 3 0 0 1-3 3H3" /></svg>); }

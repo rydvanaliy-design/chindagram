@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
+import { toSharedPostProps, sharedPostInclude } from "@/lib/messages";
 import ChatThread from "@/components/ChatThread";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +18,11 @@ export default async function ThreadPage({ params }) {
   if (!convo || (convo.aId !== me && convo.bId !== me)) notFound();
   const other = convo.aId === me ? convo.b : convo.a;
 
-  const rows = await prisma.message.findMany({ where: { conversationId: convo.id }, orderBy: { createdAt: "asc" }, take: 100 });
-  const initial = rows.map((m) => ({ id: m.id, body: m.removed ? null : m.body, removed: m.removed, senderId: m.senderId, createdAt: m.createdAt.toISOString() }));
+  const rows = await prisma.message.findMany({ where: { conversationId: convo.id }, orderBy: { createdAt: "asc" }, take: 100, include: { sharedPost: sharedPostInclude } });
+  const initial = rows.map((m) => ({
+    id: m.id, body: m.removed ? null : m.body, removed: m.removed, senderId: m.senderId, createdAt: m.createdAt.toISOString(),
+    sharedPost: m.removed ? null : toSharedPostProps(m.sharedPost, me),
+  }));
 
   return <ChatThread conversationId={convo.id} me={me} other={other} initial={initial} isAdmin={viewer.role === "ADMIN"} />;
 }

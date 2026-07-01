@@ -7,6 +7,8 @@ import { isSchoolCategory } from "@/lib/postkinds";
 import { canModerateContent } from "@/lib/roles";
 import { notifyMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notify";
+import { visibleToViewer } from "@/lib/posts";
+import { postVisibleToViewer } from "@/lib/privacy";
 
 export async function POST(req) {
   const me = await getSessionUser();
@@ -51,6 +53,18 @@ export async function POST(req) {
       const saved = kind === "AUDIO" ? await saveAudio(file) : await saveDocument(file);
       data.kind = kind;
       data.media = { create: [{ url: saved.url, type: saved.type, name: saved.name, order: 0 }] };
+    } else if (kind === "REPOST") {
+      const originalPostId = String(form.get("originalPostId") || "").trim();
+      if (!originalPostId) return NextResponse.json({ error: "Missing original post." }, { status: 400 });
+      // Same visibility rules as the feed — can't repost something you can't see.
+      const original = await prisma.post.findFirst({
+        where: { AND: [{ id: originalPostId }, visibleToViewer(me.id), postVisibleToViewer(me.id)] },
+        select: { id: true, repostOfId: true },
+      });
+      if (!original) return NextResponse.json({ error: "That post is no longer available." }, { status: 400 });
+      data.kind = "REPOST";
+      // Flatten repost-of-a-repost so every repost points at the true original.
+      data.repostOfId = original.repostOfId || original.id;
     } else {
       // Photo / video post.
       if (files.length === 0) {
