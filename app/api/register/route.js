@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { isBootstrap, verifyCode } from "@/lib/access";
+import { isBootstrap } from "@/lib/access";
 import { uniqueUsername } from "@/lib/username";
 
 export async function POST(req) {
   try {
-    const { name, email, password, code } = await req.json();
+    const { name, email, password } = await req.json();
 
     const cleanName = String(name || "").trim();
     const cleanEmail = String(email || "").trim().toLowerCase();
@@ -22,18 +22,9 @@ export async function POST(req) {
       return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
     }
 
-    // First account on a fresh install becomes the admin (bootstrap) and
-    // needs no code. Everyone else must pass the school-wide access code.
+    // Sign-up is open: anyone with the site link can create an account.
+    // The first account on a fresh install becomes the admin (bootstrap).
     const isFirst = await isBootstrap();
-    if (!isFirst) {
-      const ok = await verifyCode(code);
-      if (!ok) {
-        return NextResponse.json(
-          { error: "That school code is not valid. Ask your school for the current code." },
-          { status: 403 }
-        );
-      }
-    }
 
     const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existing) {

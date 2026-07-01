@@ -43,39 +43,6 @@ export function ApprovalToggle({ enabled }) {
   );
 }
 
-// Rotate / disable the one school-wide access code.
-export function AccessCodeControls({ hasCode }) {
-  const { busy, call } = useApi();
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        onClick={() => {
-          if (window.confirm("Make a new code? The current code stops working immediately.")) {
-            call("/api/admin/access-code", { action: "rotate" });
-          }
-        }}
-        disabled={busy}
-        className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-      >
-        {hasCode ? "Make a new code" : "Create the school code"}
-      </button>
-      {hasCode && (
-        <button
-          onClick={() => {
-            if (window.confirm("Turn off the code? No one new can join until you make a new one.")) {
-              call("/api/admin/access-code", { action: "disable" });
-            }
-          }}
-          disabled={busy}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-60"
-        >
-          Turn off joining
-        </button>
-      )}
-    </div>
-  );
-}
-
 // Per-account role dropdown.
 export function RoleSelect({ userId, role, isSelf }) {
   const { busy, call } = useApi();

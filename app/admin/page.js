@@ -1,15 +1,12 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import Link from "next/link";
-import QRCode from "qrcode";
 import { getSessionUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
-import { getActiveCode } from "@/lib/access";
 import { requireApproval } from "@/lib/settings";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import { RemovePostBtn, RemoveCommentBtn, RemoveMessageBtn, DisableUserBtn } from "@/components/AdminActions";
-import { AccessCodeControls, RoleSelect, GradeClassEditor, ParentLinker, ApprovalToggle } from "@/components/AdminOnboarding";
+import { RoleSelect, GradeClassEditor, ParentLinker, ApprovalToggle } from "@/components/AdminOnboarding";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 
 export const dynamic = "force-dynamic";
@@ -43,14 +40,6 @@ export default async function AdminPage() {
     .filter((u) => u.role === "STUDENT")
     .map((u) => ({ id: u.id, name: u.name }));
 
-  // School access code + QR (encodes the absolute /join link).
-  const code = await getActiveCode();
-  const h = headers();
-  const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
-  const proto = h.get("x-forwarded-proto") || "http";
-  const joinUrl = code ? `${proto}://${host}/join?code=${encodeURIComponent(code.code)}` : "";
-  const qrSvg = code ? await QRCode.toString(joinUrl, { type: "svg", margin: 1 }) : "";
-
   const approvalOn = await requireApproval();
   const pendingCount = await prisma.post.count({ where: { status: "PENDING", removed: false } })
     + await prisma.comment.count({ where: { status: "PENDING", removed: false } })
@@ -61,30 +50,7 @@ export default async function AdminPage() {
       <TopBar />
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
         <h1 className="mb-1 text-lg font-semibold">Admin</h1>
-        <p className="mb-6 text-sm text-gray-500">Onboarding, reported content, and accounts.</p>
-
-        {/* School access code */}
-        <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">School access code</h2>
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            {code ? (
-              <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
-                <div className="h-32 w-32 shrink-0" dangerouslySetInnerHTML={{ __html: qrSvg }} />
-                <div className="min-w-0 flex-1 text-center sm:text-left">
-                  <p className="text-xs text-gray-500">Share this code or QR with the school. Anyone with it can join as a Student.</p>
-                  <p className="my-2 select-all font-mono text-lg font-bold tracking-wider text-brand">{code.code}</p>
-                  <p className="mb-3 break-all text-xs text-gray-400">{joinUrl}</p>
-                  <AccessCodeControls hasCode={true} />
-                </div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <p className="mb-3 text-sm text-gray-500">No active code — joining is currently closed.</p>
-                <AccessCodeControls hasCode={false} />
-              </div>
-            )}
-          </div>
-        </section>
+        <p className="mb-6 text-sm text-gray-500">Moderation, reported content, and accounts.</p>
 
         {/* Moderation */}
         <section className="mb-8">

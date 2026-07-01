@@ -82,17 +82,6 @@ model AppSetting {
   value String
 }
 
-// The one school-wide access code (entry gate to the join page).
-// Only one row should be `active` at a time; admins rotate/disable it.
-model AccessCode {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  @@index([active])
-}
-
 // Lightweight connection from a Parent account to a Student account.
 // A parent can see the child's profile/public posts; never DMs or private activity.
 model ParentLink {
