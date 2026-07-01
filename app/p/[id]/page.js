@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
 import { postInclude, toPostProps } from "@/lib/posts";
 import { canModerateContent } from "@/lib/roles";
+import { canViewProfile, isBlockedEitherWay } from "@/lib/privacy";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import PostCard from "@/components/PostCard";
@@ -18,6 +19,10 @@ export default async function PostPage({ params }) {
   if (!row || row.removed) notFound();
   // Held posts are only viewable by their author or a content moderator.
   if (row.status === "PENDING" && row.authorId !== me && !canModerateContent(viewer.role)) notFound();
+  // Private accounts: only an approved follower (or the author/admin) can open the post directly.
+  if (!(await canViewProfile(me, viewer.role, row.authorId))) notFound();
+  // Blocked either way (except the author viewing their own post) — treat as gone.
+  if (row.authorId !== me && (await isBlockedEitherWay(me, row.authorId, viewer.role))) notFound();
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

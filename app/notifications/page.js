@@ -8,9 +8,15 @@ import Avatar from "@/components/Avatar";
 
 export const dynamic = "force-dynamic";
 
-const TEXT = { LIKE: "liked your post", COMMENT: "commented on your post", FOLLOW: "started following you", MESSAGE: "sent you a message", MENTION: "mentioned you in a post", COLLAB: "invited you to co-author a post" };
+const TEXT = {
+  LIKE: "liked your post", COMMENT: "commented on your post", FOLLOW: "started following you",
+  MESSAGE: "sent you a message", MENTION: "mentioned you in a post", COLLAB: "invited you to co-author a post",
+  FOLLOW_REQUEST: "asked to follow you", FOLLOW_ACCEPT: "approved your follow request",
+  FRIEND_REQUEST: "wants to be friends", FRIEND_ACCEPT: "accepted your friend request",
+};
 function linkFor(n) {
-  if (n.type === "FOLLOW") return `/u/${n.actor.id}`;
+  if (n.type === "FOLLOW_REQUEST" || n.type === "FRIEND_REQUEST") return "/requests";
+  if (["FOLLOW", "FOLLOW_ACCEPT", "FRIEND_ACCEPT"].includes(n.type)) return `/u/${n.actor.id}`;
   if (n.type === "MESSAGE") return "/messages";
   return n.postId ? `/p/${n.postId}` : "/";
 }

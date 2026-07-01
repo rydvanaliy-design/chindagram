@@ -17,6 +17,13 @@ export async function POST(req) {
   const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { id: true } });
   if (!owner) return NextResponse.json({ error: "Profile not found." }, { status: 404 });
 
+  if (ownerId !== userId) {
+    const blocked = await prisma.block.findFirst({
+      where: { OR: [{ blockerId: userId, blockedId: ownerId }, { blockerId: ownerId, blockedId: userId }] },
+    });
+    if (blocked) return NextResponse.json({ error: "You can't post on this wall." }, { status: 403 });
+  }
+
   const { status, flagReason } = await decideTextStatus(text);
   const wallPost = await prisma.wallPost.create({
     data: { ownerId, authorId: userId, body: text, status, flagReason },

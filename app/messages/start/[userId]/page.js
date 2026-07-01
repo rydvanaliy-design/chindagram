@@ -14,6 +14,11 @@ export default async function StartChat({ params }) {
   const target = await prisma.user.findUnique({ where: { id: other }, select: { id: true } });
   if (!target) redirect("/messages");
 
+  const blocked = await prisma.block.findFirst({
+    where: { OR: [{ blockerId: me, blockedId: other }, { blockerId: other, blockedId: me }] },
+  });
+  if (blocked) redirect("/messages");
+
   const [aId, bId] = [me, other].sort();
   const convo = await prisma.conversation.upsert({
     where: { aId_bId: { aId, bId } },

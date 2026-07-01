@@ -6,6 +6,7 @@ import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
 import FollowButton from "@/components/FollowButton";
+import { blockedIdsFor } from "@/lib/privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -14,17 +15,19 @@ export default async function PeoplePage() {
   if (!viewer) redirect("/login");
   const me = viewer.id;
 
+  const blockedIds = await blockedIdsFor(me);
+
   const users = await prisma.user.findMany({
-    where: { id: { not: me }, disabled: false },
+    where: { id: { notIn: [me, ...blockedIds] }, disabled: false },
     orderBy: { name: "asc" },
     select: { id: true, name: true, image: true, bio: true },
   });
 
   const follows = await prisma.follow.findMany({
     where: { followerId: me },
-    select: { followingId: true },
+    select: { followingId: true, status: true },
   });
-  const followingSet = new Set(follows.map((f) => f.followingId));
+  const statusByTarget = new Map(follows.map((f) => [f.followingId, f.status]));
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -44,7 +47,7 @@ export default async function PeoplePage() {
                   <Link href={`/u/${u.id}`} className="block truncate text-sm font-semibold hover:underline">{u.name}</Link>
                   {u.bio && <p className="truncate text-xs text-gray-400">{u.bio}</p>}
                 </div>
-                <FollowButton targetId={u.id} initialFollowing={followingSet.has(u.id)} />
+                <FollowButton targetId={u.id} initialStatus={statusByTarget.get(u.id) || "NONE"} />
               </li>
             ))}
           </ul>

@@ -20,5 +20,12 @@ export async function POST(req) {
   }
 
   await prisma.user.update({ where: { id: userId }, data: { private: makePrivate } });
+
+  // Switching to public auto-approves anyone still waiting on a request,
+  // same as Instagram — there's nothing left to gate once you're public.
+  if (!makePrivate) {
+    await prisma.follow.updateMany({ where: { followingId: userId, status: "PENDING" }, data: { status: "ACCEPTED" } });
+  }
+
   return NextResponse.json({ ok: true, private: makePrivate });
 }

@@ -45,6 +45,12 @@ export default async function AdminPage() {
     + await prisma.comment.count({ where: { status: "PENDING", removed: false } })
     + await prisma.wallPost.count({ where: { status: "PENDING", removed: false } });
 
+  // Safety review: who has blocked whom (spec: "Admins can view block relationships").
+  const blocks = await prisma.block.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { blocker: { select: { name: true } }, blocked: { select: { name: true } } },
+  });
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
@@ -130,6 +136,27 @@ export default async function AdminPage() {
                         : <RemoveMessageBtn messageId={r.message.id} />}
                     </div>
                   )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Block relationships — safety review */}
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Blocks ({blocks.length})
+          </h2>
+          {blocks.length === 0 ? (
+            <p className="rounded-xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
+              No one has blocked anyone.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+              {blocks.map((b) => (
+                <li key={b.id} className="px-4 py-3 text-sm">
+                  <b>{b.blocker.name}</b> blocked <b>{b.blocked.name}</b>
+                  <span className="ml-2 text-xs text-gray-400">{new Date(b.createdAt).toLocaleDateString()}</span>
                 </li>
               ))}
             </ul>

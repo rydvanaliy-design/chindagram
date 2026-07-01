@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/guards";
-import { isRole } from "@/lib/roles";
+import { isRole, isStaff } from "@/lib/roles";
 
 // Admins assign Student / Parent / Teacher / Admin to an account.
 export async function POST(req) {
@@ -22,6 +22,9 @@ export async function POST(req) {
   const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!target) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
-  await prisma.user.update({ where: { id: userId }, data: { role } });
+  // Teacher/Admin accounts are always public (enforced regardless of this
+  // flag), but keep it truthful in the DB for Settings/display purposes.
+  const data = isStaff(role) ? { role, private: false } : { role };
+  await prisma.user.update({ where: { id: userId }, data });
   return NextResponse.json({ ok: true });
 }

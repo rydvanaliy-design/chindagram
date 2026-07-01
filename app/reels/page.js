@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
 import BottomNav from "@/components/BottomNav";
 import ReelsFeed from "@/components/ReelsFeed";
+import { blockedIdsFor, postVisibleToViewer } from "@/lib/privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +11,16 @@ export default async function ReelsPage() {
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
   const me = viewer.id;
+  const isAdmin = viewer.role === "ADMIN";
+
+  const blockedIds = await blockedIdsFor(me);
 
   const rows = await prisma.post.findMany({
-    where: { kind: "REEL", removed: false, status: "VISIBLE" },
+    where: {
+      kind: "REEL", removed: false, status: "VISIBLE",
+      authorId: { notIn: blockedIds },
+      ...(isAdmin ? {} : postVisibleToViewer(me)),
+    },
     orderBy: { createdAt: "desc" },
     take: 30,
     include: {

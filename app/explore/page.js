@@ -6,6 +6,7 @@ import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
 import { Search, Reel } from "@/components/icons";
+import { blockedIdsFor, postVisibleToViewer } from "@/lib/privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -14,17 +15,26 @@ export default async function ExplorePage({ searchParams }) {
   if (!viewer) redirect("/login");
   const me = viewer.id;
   const q = (searchParams?.q || "").trim();
+  const isAdmin = viewer.role === "ADMIN";
+
+  const blockedIds = await blockedIdsFor(me);
 
   const users = q
     ? await prisma.user.findMany({
-        where: { disabled: false, id: { not: me }, name: { contains: q } },
+        where: { disabled: false, id: { notIn: [me, ...blockedIds] }, name: { contains: q } },
         take: 20, select: { id: true, name: true, image: true, bio: true },
       })
     : [];
 
   // Explore is a visual grid — show only posts that have an image or video.
+  // Private accounts' posts stay out unless you're an approved follower.
   const recent = await prisma.post.findMany({
-    where: { removed: false, status: "VISIBLE", media: { some: { type: { in: ["IMAGE", "VIDEO"] } } } },
+    where: {
+      removed: false, status: "VISIBLE",
+      media: { some: { type: { in: ["IMAGE", "VIDEO"] } } },
+      authorId: { notIn: blockedIds },
+      ...(isAdmin ? {} : postVisibleToViewer(me)),
+    },
     orderBy: { createdAt: "desc" },
     take: 30,
     select: { id: true, kind: true, media: { orderBy: { order: "asc" }, take: 1, select: { url: true, type: true } } },

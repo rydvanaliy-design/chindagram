@@ -55,6 +55,109 @@ model User {
   wallPostsOnMine  WallPost[] @relation("wallOwner")
 
   collaborations PostCollaborator[]
+
+  // Mutual friend requests I've sent / received (separate from one-way Follow).
+  friendRequestsSent     Friendship[] @relation("friendRequester")
+  friendRequestsReceived Friendship[] @relation("friendAddressee")
+
+  // My close-friends list, and lists I appear on.
+  closeFriends   CloseFriend[] @relation("closeFriendOwner")
+  closeFriendOf  CloseFriend[] @relation("closeFriendTarget")
+
+  // Blocking (I block someone / someone blocks me) and muting (one-way, feed-only).
+  blocksMade Block[] @relation("blocker")
+  blockedBy  Block[] @relation("blocked")
+  mutesMade  Mute[]  @relation("muter")
+  mutedBy    Mute[]  @relation("muted")
+
+  clubsCreated Club[]
+  clubMemberships ClubMember[]
+}
+
+// Mutual friend request. Becomes a real "friendship" once accepted — check
+// both directions when asking "are A and B friends".
+model Friendship {
+  id        String   @id @default(cuid())
+  status    String   @default("PENDING") // PENDING | ACCEPTED
+  createdAt DateTime @default(now())
+
+  requesterId String
+  requester   User   @relation("friendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User   @relation("friendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+}
+
+// Owner's close-friends list (one-way, like Instagram's — not consumed yet;
+// groundwork for close-friends-only stories in a later phase).
+model CloseFriend {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  ownerId  String
+  owner    User   @relation("closeFriendOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  friendId String
+  friend   User   @relation("closeFriendTarget", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, friendId])
+}
+
+// Blocking someone stops all contact both ways (follow, DM, visibility).
+// A block from either side counts — only the original blocker can undo it.
+model Block {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  blockerId String
+  blocker   User   @relation("blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User   @relation("blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+// Muting is one-way and quiet: hides someone's posts from your own feed only.
+model Mute {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  muterId String
+  muter   User   @relation("muter", fields: [muterId], references: [id], onDelete: Cascade)
+  mutedId String
+  muted   User   @relation("muted", fields: [mutedId], references: [id], onDelete: Cascade)
+
+  @@unique([muterId, mutedId])
+}
+
+// Minimal club/community groundwork — full management (join requests, events,
+// files, pinned posts) lands in the later Communities phase. Created by
+// teachers/admins; students join and leave instantly for now.
+model Club {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  members ClubMember[]
+}
+
+model ClubMember {
+  id       String   @id @default(cuid())
+  joinedAt DateTime @default(now())
+
+  clubId String
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+  @@index([userId])
 }
 
 // A post written on someone's profile wall. Moderated like everything else.
@@ -246,6 +349,7 @@ model Save {
 
 model Follow {
   id        String   @id @default(cuid())
+  status    String   @default("ACCEPTED") // PENDING (awaiting approval on a private account) | ACCEPTED
   createdAt DateTime @default(now())
 
   followerId  String
@@ -255,6 +359,7 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@index([followerId])
+  @@index([followingId, status])
 }
 
 model Conversation {
@@ -292,7 +397,7 @@ model Message {
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // LIKE | COMMENT | FOLLOW | MESSAGE
+  type      String   // LIKE | COMMENT | FOLLOW | MESSAGE | MENTION | COLLAB | FOLLOW_REQUEST | FOLLOW_ACCEPT | FRIEND_REQUEST | FRIEND_ACCEPT
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 

@@ -16,6 +16,11 @@ export async function POST(req) {
   const recipient = await prisma.user.findUnique({ where: { id: recipientId }, select: { id: true, disabled: true } });
   if (!recipient || recipient.disabled) return NextResponse.json({ error: "That person can't receive messages." }, { status: 400 });
 
+  const blocked = await prisma.block.findFirst({
+    where: { OR: [{ blockerId: me, blockedId: recipientId }, { blockerId: recipientId, blockedId: me }] },
+  });
+  if (blocked) return NextResponse.json({ error: "You can't message this person." }, { status: 403 });
+
   const [aId, bId] = [me, recipientId].sort();
   const convo = await prisma.conversation.upsert({ where: { aId_bId: { aId, bId } }, update: { updatedAt: new Date() }, create: { aId, bId } });
 
