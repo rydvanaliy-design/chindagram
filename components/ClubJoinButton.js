@@ -2,16 +2,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ClubJoinButton({ clubId, initialJoined }) {
+const LABEL = { NONE: "Join", PENDING: "Requested", ACCEPTED: "Joined" };
+
+export default function ClubJoinButton({ clubId, initialStatus }) {
   const router = useRouter();
-  const [joined, setJoined] = useState(initialJoined);
+  const [status, setStatus] = useState(initialStatus);
   const [busy, setBusy] = useState(false);
 
   async function toggle() {
     setBusy(true);
     const res = await fetch(`/api/clubs/${clubId}/join`, { method: "POST" });
     setBusy(false);
-    if (res.ok) { const d = await res.json(); setJoined(d.joined); router.refresh(); }
+    if (res.ok) { const d = await res.json(); setStatus(d.status); router.refresh(); }
   }
 
   return (
@@ -19,12 +21,12 @@ export default function ClubJoinButton({ clubId, initialJoined }) {
       onClick={toggle}
       disabled={busy}
       className={
-        joined
-          ? "rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-          : "rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
+        status === "NONE"
+          ? "rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
+          : "rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
       }
     >
-      {joined ? "Joined" : "Join"}
+      {LABEL[status] || "Join"}
     </button>
   );
 }

@@ -16,7 +16,10 @@ export default async function ClubsPage() {
 
   const clubs = await prisma.club.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { members: true } }, members: { where: { userId: me }, select: { id: true } } },
+    include: {
+      _count: { select: { members: { where: { status: "ACCEPTED" } } } },
+      members: { where: { userId: me }, select: { status: true } },
+    },
   });
 
   return (
@@ -43,7 +46,7 @@ export default async function ClubsPage() {
                     {c.description && <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">{c.description}</p>}
                     <p className="mt-1 text-xs text-gray-400">{c._count.members} {c._count.members === 1 ? "member" : "members"}</p>
                   </div>
-                  <ClubJoinButton clubId={c.id} initialJoined={c.members.length > 0} />
+                  <ClubJoinButton clubId={c.id} initialStatus={c.members[0]?.status || "NONE"} />
                 </div>
               </li>
             ))}

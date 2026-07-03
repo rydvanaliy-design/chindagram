@@ -22,7 +22,7 @@ export async function POST(req) {
       name: cleanName,
       description: cleanDesc || null,
       createdById: me.id,
-      members: { create: { userId: me.id } },
+      members: { create: { userId: me.id, status: "ACCEPTED", role: "ADMIN" } },
     },
   });
 
