@@ -73,6 +73,9 @@ model User {
   clubsCreated Club[]
   clubMemberships ClubMember[]
 
+  eventsCreated Event[]     @relation("eventCreator")
+  eventRSVPs    EventRSVP[]
+
   commentLikes CommentLike[]
   saveCollections SaveCollection[]
 }
@@ -148,10 +151,14 @@ model Club {
   createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   members ClubMember[]
+  posts   Post[]
+  events  Event[]
 }
 
 model ClubMember {
   id       String   @id @default(cuid())
+  status   String   @default("ACCEPTED") // PENDING (awaiting a club admin's OK) | ACCEPTED
+  role     String   @default("MEMBER")   // MEMBER | ADMIN (any member can be promoted, not just Teacher/Admin accounts)
   joinedAt DateTime @default(now())
 
   clubId String
@@ -160,6 +167,46 @@ model ClubMember {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([clubId, userId])
+  @@index([userId])
+  @@index([clubId, status])
+}
+
+// Create/RSVP/calendar. Always created by a Teacher/Admin (spec's rule,
+// independent of club-admin status), optionally tied to a club or a class
+// label — neither set means a school-wide event.
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  startAt     DateTime
+  endAt       DateTime?
+  createdAt   DateTime  @default(now())
+
+  createdById String
+  createdBy   User   @relation("eventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  clubId     String?
+  club       Club?   @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  gradeClass String? // ties the event to a class label, mirrors User.gradeClass / classmateIds()
+
+  rsvps EventRSVP[]
+
+  @@index([startAt])
+  @@index([clubId])
+}
+
+model EventRSVP {
+  id        String   @id @default(cuid())
+  status    String   // GOING | INTERESTED | NOT_GOING
+  createdAt DateTime @default(now())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
   @@index([userId])
 }
 
@@ -211,7 +258,7 @@ model Post {
   caption    String?
   linkUrl    String?  // for LINK posts
   category   String   @default("NONE") // NONE | ANNOUNCEMENT | ACHIEVEMENT | TIMETABLE | LOSTFOUND (school posts)
-  pinned     Boolean  @default(false)  // pinned to the author's profile
+  pinned     Boolean  @default(false)  // pinned to the author's profile, OR within the club feed if clubId is set
   removed    Boolean  @default(false)
   status     String   @default("VISIBLE") // VISIBLE | PENDING (held for review)
   flagReason String?  // why the auto-filter held it (shown to reviewers)
@@ -219,6 +266,11 @@ model Post {
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Posted to a club's own feed rather than the author's personal profile.
+  // SetNull if the club is deleted later — the post stays as a personal post.
+  clubId String?
+  club   Club?   @relation(fields: [clubId], references: [id], onDelete: SetNull)
 
   // Reposting to your own feed (kind = REPOST). SetNull if the original is
   // deleted later — the repost stays as your own content, just unlinked.
@@ -240,6 +292,7 @@ model Post {
   @@index([authorId, createdAt])
   @@index([kind, createdAt])
   @@index([status, createdAt])
+  @@index([clubId, createdAt])
 }
 
 // Co-authored posts: an invited user (accepted) co-owns a post; it appears on
@@ -467,7 +520,9 @@ model Notification {
   actorId     String
   actor       User   @relation("notifActor", fields: [actorId], references: [id], onDelete: Cascade)
 
-  postId String?
+  postId  String?
+  clubId  String?
+  eventId String?
 
   @@index([recipientId, read])
   @@index([recipientId, createdAt])
