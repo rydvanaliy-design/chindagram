@@ -8,10 +8,11 @@ import Poll from "@/components/Poll";
 import RichText from "@/components/RichText";
 import ReactionBar from "@/components/ReactionBar";
 import RepostMenu from "@/components/RepostMenu";
+import SaveButton from "@/components/SaveButton";
 import PostEmbed from "@/components/PostEmbed";
 import CommentItem from "@/components/CommentItem";
 import CommentComposer from "@/components/CommentComposer";
-import { Comment as CommentIcon, Bookmark, BookmarkFilled, Flag } from "@/components/icons";
+import { Comment as CommentIcon, Flag } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 import { CATEGORY_LABELS } from "@/lib/postkinds";
 
@@ -61,7 +62,6 @@ function DocCard({ media }) {
 export default function PostCard({ post, currentUserId, isAdmin }) {
   const router = useRouter();
   const [removed, setRemoved] = useState(false);
-  const [saved, setSaved] = useState(post.savedByMe);
   const [comments, setComments] = useState(post.comments);
   const [pinned, setPinned] = useState(post.pinned);
   const [invite, setInvite] = useState(post.myInvite);
@@ -83,11 +83,6 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
     if (res.ok) { const d = await res.json(); setPinned(d.pinned); router.refresh(); }
   }
 
-  async function toggleSave() {
-    setSaved((v) => !v);
-    const res = await fetch(`/api/posts/${post.id}/save`, { method: "POST" });
-    if (res.ok) { const d = await res.json(); setSaved(d.saved); }
-  }
   async function addComment(text, mediaUrl, mediaType) {
     const res = await fetch(`/api/posts/${post.id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text, mediaUrl, mediaType }) });
     if (res.ok) {
@@ -212,9 +207,9 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
         <ReactionBar postId={post.id} initialMyReaction={post.myReaction} initialBreakdown={post.reactionBreakdown} initialTotal={post.totalReactions} />
         <span className="pt-0.5 text-gray-700"><CommentIcon /></span>
         <RepostMenu postId={post.id} />
-        <button onClick={toggleSave} aria-label="Save" className="ml-auto pt-0.5 transition active:scale-90">
-          {saved ? <span className="text-brand"><BookmarkFilled /></span> : <Bookmark />}
-        </button>
+        <div className="ml-auto">
+          <SaveButton postId={post.id} initialSaved={post.savedByMe} initialCollectionId={post.savedCollectionId} />
+        </div>
       </div>
 
       {post.caption && post.kind !== "TEXT" && post.kind !== "POLL" && post.kind !== "REPOST" && (
