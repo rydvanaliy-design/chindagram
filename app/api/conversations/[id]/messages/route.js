@@ -5,6 +5,7 @@ import { notify } from "@/lib/notify";
 import { visibleToViewer } from "@/lib/posts";
 import { postVisibleToViewer } from "@/lib/privacy";
 import { isConversationMember, messageInclude, toMessageProps } from "@/lib/messages";
+import { publish } from "@/lib/messageStream";
 
 // Poll for new messages (?after=<ISO timestamp>). Every successful fetch
 // marks the conversation read up to now — opening/polling a thread IS
@@ -71,6 +72,10 @@ export async function POST(req, { params }) {
 
   const others = await prisma.conversationMember.findMany({ where: { conversationId: params.id, userId: { not: me } }, select: { userId: true } });
   for (const o of others) await notify({ recipientId: o.userId, actorId: me, type: "MESSAGE" });
+
+  // A brand-new message has no reactions yet, so this shape is identical for
+  // every subscriber regardless of who's viewing — safe to broadcast as-is.
+  publish(params.id, toMessageProps(message, me));
 
   return NextResponse.json({ message: toMessageProps(message, me) }, { status: 201 });
 }

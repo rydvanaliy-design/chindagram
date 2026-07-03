@@ -15,13 +15,26 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  function addIfNew(incoming) {
+    setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
+  }
+
+  // Realtime delivery via SSE — instant, no polling needed for the common case.
+  useEffect(() => {
+    const es = new EventSource(`/api/conversations/${conversationId}/stream`);
+    es.addEventListener("message", (e) => addIfNew(JSON.parse(e.data)));
+    return () => es.close();
+  }, [conversationId]);
+
+  // Slow safety-net poll in case the stream drops (spec's own suggestion:
+  // "polling can remain the fallback") — SSE is the primary path now.
   useEffect(() => {
     const t = setInterval(async () => {
       const last = messages[messages.length - 1];
       const q = last ? `?after=${encodeURIComponent(last.createdAt)}` : "";
       const res = await fetch(`/api/conversations/${conversationId}/messages${q}`);
-      if (res.ok) { const d = await res.json(); if (d.messages.length) setMessages((m) => [...m, ...d.messages]); }
-    }, 4000);
+      if (res.ok) { const d = await res.json(); d.messages.forEach(addIfNew); }
+    }, 10000);
     return () => clearInterval(t);
   }, [conversationId, messages]);
 
@@ -31,7 +44,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
     setBusy(true);
     const res = await fetch(`/api/conversations/${conversationId}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text }) });
     setBusy(false);
-    if (res.ok) { const d = await res.json(); setMessages((m) => [...m, d.message]); setDraft(""); }
+    if (res.ok) { const d = await res.json(); addIfNew(d.message); setDraft(""); }
   }
   async function report(id) {
     const reason = window.prompt("Report this message (optional reason):") ?? "";
