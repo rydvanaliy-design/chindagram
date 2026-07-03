@@ -16,7 +16,8 @@ export default async function TagPage({ params }) {
 
   // SQLite LIKE is case-insensitive for ASCII, so `contains` matches #Tag too.
   // We then keep only exact-token matches (so "#tag" doesn't match "#tagger").
-  const candidates = tag ? await getPostList({ caption: { contains: `#${tag}` } }, me, 60) : [];
+  // Club posts live on the club's own page, not general hashtag discovery.
+  const candidates = tag ? await getPostList({ caption: { contains: `#${tag}` }, clubId: null }, me, 60) : [];
   const re = new RegExp(`#${tag}\\b`, "i");
   const posts = candidates.filter((p) => p.caption && re.test(p.caption));
 

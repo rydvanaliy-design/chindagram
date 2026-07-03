@@ -3,15 +3,18 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
 import { isClubAdmin } from "@/lib/clubs";
+import { visibleToViewer, postInclude, toPostProps } from "@/lib/posts";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
+import Composer from "@/components/Composer";
+import PostCard from "@/components/PostCard";
 import ClubJoinButton from "@/components/ClubJoinButton";
 import ClubRequestRow from "@/components/ClubRequestRow";
 import ClubMemberRow from "@/components/ClubMemberRow";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClubPage({ params }) {
+export default async function ClubPage({ params, searchParams }) {
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
   const me = viewer.id;
@@ -30,6 +33,7 @@ export default async function ClubPage({ params }) {
   if (!club) notFound();
 
   const myMembership = await prisma.clubMember.findUnique({ where: { clubId_userId: { clubId: club.id, userId: me } } });
+  const iAmMember = myMembership?.status === "ACCEPTED";
   const iAmAdmin = await isClubAdmin(club.id, me, viewer.role);
 
   const pendingRequests = iAmAdmin ? await prisma.clubMember.findMany({
@@ -37,6 +41,17 @@ export default async function ClubPage({ params }) {
     orderBy: { joinedAt: "asc" },
     include: { user: { select: { id: true, name: true, image: true } } },
   }) : [];
+
+  // The club's own feed — moderation rules still apply, but membership
+  // (not the author's personal account privacy) is what gates visibility here.
+  const filesOnly = searchParams?.filter === "files";
+  const postRows = await prisma.post.findMany({
+    where: { AND: [visibleToViewer(me), { clubId: club.id, ...(filesOnly ? { kind: "DOCUMENT" } : {}) }] },
+    orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+    take: 60,
+    include: postInclude(me),
+  });
+  const posts = postRows.map((p) => toPostProps(p, me));
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -48,7 +63,7 @@ export default async function ClubPage({ params }) {
             <div className="min-w-0">
               <h1 className="text-lg font-semibold">{club.name}</h1>
               {club.description && <p className="mt-1 text-sm text-gray-600">{club.description}</p>}
-              <p className="mt-2 text-xs text-gray-400">Started by {club.createdBy.name}</p>
+              <p className="mt-2 text-xs text-gray-400">Started by {club.createdBy.name} · {club.members.length} {club.members.length === 1 ? "member" : "members"}</p>
             </div>
             <ClubJoinButton clubId={club.id} initialStatus={myMembership?.status || "NONE"} />
           </div>
@@ -65,7 +80,32 @@ export default async function ClubPage({ params }) {
           </>
         )}
 
-        <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        {iAmMember && (
+          <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-4">
+            <Composer isStaff={false} clubId={club.id} />
+          </div>
+        )}
+
+        <div className="mb-3 mt-6 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Club feed</h2>
+          <div className="flex gap-2 text-xs">
+            <Link href={`/clubs/${club.id}`} className={`rounded-full border px-2.5 py-1 font-semibold ${!filesOnly ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}>All</Link>
+            <Link href={`/clubs/${club.id}?filter=files`} className={`rounded-full border px-2.5 py-1 font-semibold ${filesOnly ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}>Files</Link>
+          </div>
+        </div>
+        {posts.length === 0 ? (
+          <p className="rounded-2xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-400">
+            {filesOnly ? "No files shared yet." : iAmMember ? "No posts yet — be the first to share something." : "No posts yet."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} currentUserId={me} isAdmin={viewer.role === "ADMIN"} canManageClub={iAmAdmin} />
+            ))}
+          </div>
+        )}
+
+        <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
           Members ({club.members.length})
         </h2>
         {club.members.length === 0 ? (

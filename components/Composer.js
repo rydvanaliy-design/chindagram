@@ -15,7 +15,7 @@ const TYPES = [
 
 const DOC_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,application/pdf,text/plain";
 
-export default function Composer({ isStaff = false }) {
+export default function Composer({ isStaff = false, clubId = null }) {
   const router = useRouter();
   const [type, setType] = useState("photo");
   const [files, setFiles] = useState([]);
@@ -71,6 +71,7 @@ export default function Composer({ isStaff = false }) {
     if (type === "photo") files.forEach((f) => form.append("media", f));
     if (type === "audio" || type === "document") form.append("media", attachment);
     if (collaborator.trim()) form.append("collaborator", collaborator.trim());
+    if (clubId) form.append("clubId", clubId);
 
     const res = await fetch("/api/posts", { method: "POST", body: form });
     if (!res.ok) {
@@ -85,7 +86,14 @@ export default function Composer({ isStaff = false }) {
       setBusy(false);
       return;
     }
-    router.push(type === "photo" && isVideo ? "/reels" : "/");
+    if (clubId) {
+      // Posting to a club keeps you on the same page — reset the form
+      // instead of leaving it stuck on "Posting…".
+      setType("photo"); setFiles([]); setPreviews([]); setIsVideo(false);
+      setCaption(""); setLinkUrl(""); setPollOptions(["", ""]); setAttachment(null);
+      setCollaborator(""); setCategory("NONE"); setBusy(false);
+    }
+    router.push(clubId ? `/clubs/${clubId}` : type === "photo" && isVideo ? "/reels" : "/");
     router.refresh();
   }
 
@@ -96,7 +104,7 @@ export default function Composer({ isStaff = false }) {
         <p className="mb-4 text-sm text-amber-700">
           Your post will appear once a teacher or admin approves it. You can see it on your profile, marked “Pending review,” in the meantime.
         </p>
-        <button onClick={() => router.push("/")} className="ig-btn">Back to feed</button>
+        <button onClick={() => router.push(clubId ? `/clubs/${clubId}` : "/")} className="ig-btn">Back</button>
       </div>
     );
   }

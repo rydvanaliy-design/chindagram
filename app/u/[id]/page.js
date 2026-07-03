@@ -78,6 +78,7 @@ export default async function ProfilePage({ params }) {
   const posts = canViewContent ? await prisma.post.findMany({
     where: {
       removed: false,
+      clubId: null, // club posts live on the club's own page, not the personal profile
       AND: [
         { OR: [{ status: "VISIBLE" }, { authorId: me }] },
         { OR: [{ authorId: user.id }, { collaborators: { some: { userId: user.id, accepted: true } } }] },

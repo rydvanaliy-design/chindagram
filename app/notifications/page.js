@@ -16,6 +16,7 @@ const TEXT = {
   COMMENT_REPLY: "replied to your comment", COMMENT_LIKE: "liked your comment",
   CLUB_JOIN_REQUEST: "asked to join your club", CLUB_REQUEST_ACCEPTED: "accepted your club request",
   CLUB_ROLE_CHANGED: "made you a club admin", EVENT_CREATED: "created a new event",
+  CLUB_ANNOUNCEMENT: "posted an announcement in your club",
 };
 function linkFor(n) {
   if (n.type === "FOLLOW_REQUEST" || n.type === "FRIEND_REQUEST") return "/requests";

@@ -9,6 +9,7 @@ import { notifyMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notify";
 import { visibleToViewer } from "@/lib/posts";
 import { postVisibleToViewer } from "@/lib/privacy";
+import { isClubMember } from "@/lib/clubs";
 
 export async function POST(req) {
   const me = await getSessionUser();
@@ -29,7 +30,13 @@ export async function POST(req) {
     }
     if (!isSchoolCategory(category)) category = "NONE";
 
-    const data = { authorId: me.id, caption: caption || null, category };
+    // Posting to a club's own feed — must be an accepted member.
+    const clubId = String(form.get("clubId") || "").trim();
+    if (clubId && !(await isClubMember(clubId, me.id))) {
+      return NextResponse.json({ error: "You need to be a member of this club to post here." }, { status: 403 });
+    }
+
+    const data = { authorId: me.id, caption: caption || null, category, clubId: clubId || null };
 
     if (kind === "TEXT") {
       if (!caption) return NextResponse.json({ error: "Write something for your post." }, { status: 400 });

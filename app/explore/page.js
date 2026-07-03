@@ -30,7 +30,7 @@ export default async function ExplorePage({ searchParams }) {
   // Private accounts' posts stay out unless you're an approved follower.
   const recent = await prisma.post.findMany({
     where: {
-      removed: false, status: "VISIBLE",
+      removed: false, status: "VISIBLE", clubId: null, // club posts live on the club's own page
       media: { some: { type: { in: ["IMAGE", "VIDEO"] } } },
       authorId: { notIn: blockedIds },
       ...(isAdmin ? {} : postVisibleToViewer(me)),

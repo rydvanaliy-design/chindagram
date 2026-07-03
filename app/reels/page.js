@@ -17,7 +17,7 @@ export default async function ReelsPage() {
 
   const rows = await prisma.post.findMany({
     where: {
-      kind: "REEL", removed: false, status: "VISIBLE",
+      kind: "REEL", removed: false, status: "VISIBLE", clubId: null, // club posts live on the club's own page
       authorId: { notIn: blockedIds },
       ...(isAdmin ? {} : postVisibleToViewer(me)),
     },

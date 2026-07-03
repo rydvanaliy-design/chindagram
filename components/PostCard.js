@@ -59,7 +59,7 @@ function DocCard({ media }) {
   );
 }
 
-export default function PostCard({ post, currentUserId, isAdmin }) {
+export default function PostCard({ post, currentUserId, isAdmin, canManageClub = false }) {
   const router = useRouter();
   const [removed, setRemoved] = useState(false);
   const [comments, setComments] = useState(post.comments);
@@ -153,7 +153,7 @@ export default function PostCard({ post, currentUserId, isAdmin }) {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-3 text-gray-400">
-          {isOwner && <button onClick={togglePin} title={pinned ? "Unpin" : "Pin to profile"} className="text-xs font-semibold text-gray-500 hover:text-brand">{pinned ? "Unpin" : "Pin"}</button>}
+          {(isOwner || canManageClub) && <button onClick={togglePin} title={pinned ? "Unpin" : "Pin"} className="text-xs font-semibold text-gray-500 hover:text-brand">{pinned ? "Unpin" : "Pin"}</button>}
           {!isOwner && <button onClick={() => report({ postId: post.id })} title="Report" className="hover:text-brand"><Flag /></button>}
           {(isOwner || isAdmin) && <button onClick={deletePost} className="text-xs font-semibold text-red-600 hover:underline">{isOwner ? "Delete" : "Remove"}</button>}
         </div>

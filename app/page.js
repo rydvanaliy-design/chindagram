@@ -91,7 +91,11 @@ export default async function FeedPage({ searchParams }) {
     candidateTake = 150; // wider candidate pool for score-ranking
   }
 
-  const baseConditions = [visibleToViewer(me), postVisibleToViewer(me), { authorId: { notIn: excludeIds } }, extraWhere];
+  // Club posts live on the club's own page, not the general platform feed —
+  // exclude them everywhere here, including the Teacher/Admin boost
+  // injection below (a club post shouldn't leak school-wide just because
+  // its author happens to be a Teacher).
+  const baseConditions = [visibleToViewer(me), postVisibleToViewer(me), { authorId: { notIn: excludeIds } }, { clubId: null }, extraWhere];
 
   const inc = postInclude(me);
   inc._count = { select: { likes: true, comments: true } };
