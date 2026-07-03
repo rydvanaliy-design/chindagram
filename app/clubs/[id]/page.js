@@ -53,6 +53,12 @@ export default async function ClubPage({ params, searchParams }) {
   });
   const posts = postRows.map((p) => toPostProps(p, me));
 
+  const upcomingEvents = await prisma.event.findMany({
+    where: { clubId: club.id, startAt: { gte: new Date() } },
+    orderBy: { startAt: "asc" },
+    take: 5,
+  });
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
@@ -76,6 +82,22 @@ export default async function ClubPage({ params, searchParams }) {
             </h2>
             <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
               {pendingRequests.map((r) => <ClubRequestRow key={r.id} clubId={club.id} user={r.user} />)}
+            </ul>
+          </>
+        )}
+
+        {upcomingEvents.length > 0 && (
+          <>
+            <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-gray-500">Upcoming events</h2>
+            <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
+              {upcomingEvents.map((e) => (
+                <li key={e.id}>
+                  <Link href={`/events/${e.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
+                    <span className="truncate text-sm font-medium">{e.title}</span>
+                    <span className="shrink-0 text-xs text-gray-400">{new Date(e.startAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </>
         )}

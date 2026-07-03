@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canModerateContent } from "@/lib/roles";
-import { Search, Bell, Send, Shield, Flag } from "@/components/icons";
+import { Search, Bell, Send, Shield, Flag, Calendar } from "@/components/icons";
 
 export default async function TopBar() {
   const session = await auth();
@@ -36,6 +36,7 @@ export default async function TopBar() {
             </Link>
           )}
           {user?.role === "ADMIN" && <Link href="/admin" title="Admin" className="hover:text-brand"><Shield /></Link>}
+          <Link href="/events" title="Events" className="hover:text-brand"><Calendar /></Link>
           <Link href="/explore" title="Search" className="hover:text-brand"><Search /></Link>
           <Link href="/notifications" title="Notifications" className="relative hover:text-brand">
             <Bell />
