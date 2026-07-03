@@ -46,11 +46,11 @@ export default function RepostMenu({ postId }) {
     }
   }
 
-  async function sendTo(recipientId) {
+  async function sendTo(conversationId) {
     setBusy(true);
-    const res = await fetch("/api/messages", {
+    const res = await fetch(`/api/conversations/${conversationId}/messages`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipientId, sharedPostId: postId }),
+      body: JSON.stringify({ sharedPostId: postId }),
     });
     setBusy(false);
     closeAll();

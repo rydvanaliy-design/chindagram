@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/guards";
+import { isConversationMember } from "@/lib/messages";
 
 export async function POST(req) {
   const userId = await requireUserId();
@@ -10,8 +11,8 @@ export async function POST(req) {
   if (!postId && !commentId && !messageId && !wallPostId) return NextResponse.json({ error: "Nothing to report." }, { status: 400 });
 
   if (messageId) {
-    const msg = await prisma.message.findUnique({ where: { id: messageId }, include: { conversation: true } });
-    if (!msg || (msg.conversation.aId !== userId && msg.conversation.bId !== userId)) {
+    const msg = await prisma.message.findUnique({ where: { id: messageId }, select: { conversationId: true } });
+    if (!msg || !(await isConversationMember(msg.conversationId, userId))) {
       return NextResponse.json({ error: "Not allowed." }, { status: 403 });
     }
   }

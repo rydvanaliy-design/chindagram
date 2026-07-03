@@ -38,8 +38,9 @@ model User {
   stories     Story[]
 
   messagesSent   Message[]      @relation("sender")
-  conversationsA Conversation[] @relation("aSide")
-  conversationsB Conversation[] @relation("bSide")
+  conversationsCreated    Conversation[]       @relation("conversationCreator")
+  conversationMemberships ConversationMember[]
+  messageReactions        MessageReaction[]
 
   notifications     Notification[] @relation("notifRecipient")
   notificationsMade Notification[] @relation("notifActor")
@@ -472,26 +473,48 @@ model Follow {
   @@index([followingId, status])
 }
 
+// A 1:1 chat is just a 2-member conversation. `pairKey` (sorted "idA:idB")
+// gives 1:1 conversations the same DB-level "only one thread per pair"
+// guarantee the old aId/bId unique constraint had; it's null for groups,
+// which can have as many separate conversations as people want.
 model Conversation {
   id        String   @id @default(cuid())
+  isGroup   Boolean  @default(false)
+  name      String?  // group display name; 1:1 threads derive a name from the other member
+  pairKey   String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  aId String
-  a   User   @relation("aSide", fields: [aId], references: [id], onDelete: Cascade)
-  bId String
-  b   User   @relation("bSide", fields: [bId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?   @relation("conversationCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
+  members  ConversationMember[]
   messages Message[]
 
-  @@unique([aId, bId])
-  @@index([aId])
-  @@index([bId])
+  @@index([updatedAt])
+}
+
+model ConversationMember {
+  id       String   @id @default(cuid())
+  role     String   @default("MEMBER") // MEMBER | ADMIN (group admin — rename group, add/remove members)
+  joinedAt DateTime @default(now())
+
+  // "Seen up to" this point — simpler than a per-message read row, and it's
+  // what read receipts actually need (1:1 "Seen HH:MM", group "Seen by N").
+  lastReadAt DateTime?
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
 }
 
 model Message {
   id        String   @id @default(cuid())
-  body      String   // may be empty when sharedPostId is set (sharing a post with no extra caption)
+  body      String   // may be empty when sharedPostId or mediaUrl is set
   removed   Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -504,9 +527,33 @@ model Message {
   sharedPostId String?
   sharedPost   Post?   @relation(fields: [sharedPostId], references: [id], onDelete: SetNull)
 
-  reports Report[]
+  // Replying to another message in the same conversation.
+  parentId String?
+  parent   Message?  @relation("messageReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies  Message[] @relation("messageReplies")
+
+  // Image/video/voice-note attachment.
+  mediaUrl  String?
+  mediaType String? // IMAGE | VIDEO | VOICE
+
+  reactions MessageReaction[]
+  reports   Report[]
 
   @@index([conversationId, createdAt])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  type      String   // same REACTIONS set as post reactions (lib/reactions.js)
+  createdAt DateTime @default(now())
+
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
 }
 
 model Notification {

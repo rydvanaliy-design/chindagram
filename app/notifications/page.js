@@ -17,11 +17,12 @@ const TEXT = {
   CLUB_JOIN_REQUEST: "asked to join your club", CLUB_REQUEST_ACCEPTED: "accepted your club request",
   CLUB_ROLE_CHANGED: "made you a club admin", EVENT_CREATED: "created a new event",
   CLUB_ANNOUNCEMENT: "posted an announcement in your club",
+  GROUP_ADDED: "added you to a group",
 };
 function linkFor(n) {
   if (n.type === "FOLLOW_REQUEST" || n.type === "FRIEND_REQUEST") return "/requests";
   if (["FOLLOW", "FOLLOW_ACCEPT", "FRIEND_ACCEPT"].includes(n.type)) return `/u/${n.actor.id}`;
-  if (n.type === "MESSAGE") return "/messages";
+  if (n.type === "MESSAGE" || n.type === "GROUP_ADDED") return "/messages";
   if (["CLUB_JOIN_REQUEST", "CLUB_REQUEST_ACCEPTED", "CLUB_ROLE_CHANGED"].includes(n.type)) return n.clubId ? `/clubs/${n.clubId}` : "/clubs";
   if (n.type === "EVENT_CREATED") return n.eventId ? `/events/${n.eventId}` : "/events";
   return n.postId ? `/p/${n.postId}` : "/";

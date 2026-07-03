@@ -3,12 +3,14 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import PostEmbed from "@/components/PostEmbed";
+import GroupInfoPanel from "@/components/GroupInfoPanel";
 import { ChevronLeft, Send } from "@/components/icons";
 
-export default function ChatThread({ conversationId, me, other, initial, isAdmin }) {
+export default function ChatThread({ conversationId, me, initial, isAdmin, isGroup, name, image, otherId, members, createdById, iAmGroupAdmin }) {
   const [messages, setMessages] = useState(initial);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const bottomRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -17,7 +19,7 @@ export default function ChatThread({ conversationId, me, other, initial, isAdmin
     const t = setInterval(async () => {
       const last = messages[messages.length - 1];
       const q = last ? `?after=${encodeURIComponent(last.createdAt)}` : "";
-      const res = await fetch(`/api/messages/${conversationId}${q}`);
+      const res = await fetch(`/api/conversations/${conversationId}/messages${q}`);
       if (res.ok) { const d = await res.json(); if (d.messages.length) setMessages((m) => [...m, ...d.messages]); }
     }, 4000);
     return () => clearInterval(t);
@@ -27,7 +29,7 @@ export default function ChatThread({ conversationId, me, other, initial, isAdmin
     e.preventDefault();
     const text = draft.trim(); if (!text || busy) return;
     setBusy(true);
-    const res = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipientId: other.id, body: text }) });
+    const res = await fetch(`/api/conversations/${conversationId}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text }) });
     setBusy(false);
     if (res.ok) { const d = await res.json(); setMessages((m) => [...m, d.message]); setDraft(""); }
   }
@@ -41,12 +43,20 @@ export default function ChatThread({ conversationId, me, other, initial, isAdmin
     if (res.ok) setMessages((ms) => ms.map((m) => (m.id === id ? { ...m, removed: true, body: null } : m)));
   }
 
+  function senderName(id) {
+    return members.find((m) => m.id === id)?.name || "Someone";
+  }
+
   return (
     <div className="flex h-[100dvh] flex-col bg-white">
       <header className="flex items-center gap-3 border-b border-gray-200 px-3 py-2.5">
         <Link href="/messages" aria-label="Back" className="text-gray-700"><ChevronLeft /></Link>
-        <Avatar name={other.name} image={other.image} size={36} />
-        <Link href={`/u/${other.id}`} className="text-sm font-semibold hover:underline">{other.name}</Link>
+        <Avatar name={name} image={image} size={36} />
+        {isGroup ? (
+          <button onClick={() => setShowInfo(true)} className="text-sm font-semibold hover:underline">{name}</button>
+        ) : (
+          <Link href={`/u/${otherId}`} className="text-sm font-semibold hover:underline">{name}</Link>
+        )}
       </header>
 
       <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-4">
@@ -58,20 +68,25 @@ export default function ChatThread({ conversationId, me, other, initial, isAdmin
               {!mine && !m.removed && (
                 <button onClick={() => report(m.id)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">report</button>
               )}
-              {!m.removed && m.sharedPost ? (
-                <div className="max-w-[75%]">
-                  <PostEmbed post={m.sharedPost} className="w-64 max-w-full" />
-                  {m.body && (
-                    <span className={`mt-1 block whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
-                      {m.body}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <span className={`max-w-[75%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${m.removed ? "bg-gray-100 italic text-gray-400" : mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
-                  {m.removed ? "message removed" : m.body}
-                </span>
-              )}
+              <div className="max-w-[75%]">
+                {isGroup && !mine && !m.removed && (
+                  <p className="mb-0.5 px-1 text-[11px] font-semibold text-gray-500">{senderName(m.senderId)}</p>
+                )}
+                {!m.removed && m.sharedPost ? (
+                  <>
+                    <PostEmbed post={m.sharedPost} className="w-64 max-w-full" />
+                    {m.body && (
+                      <span className={`mt-1 block whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
+                        {m.body}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className={`block whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${m.removed ? "bg-gray-100 italic text-gray-400" : mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
+                    {m.removed ? "message removed" : m.body}
+                  </span>
+                )}
+              </div>
               {isAdmin && !m.removed && (
                 <button onClick={() => remove(m.id)} className="text-[11px] text-red-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600">remove</button>
               )}
@@ -85,6 +100,13 @@ export default function ChatThread({ conversationId, me, other, initial, isAdmin
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message…" className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-gray-400" />
         <button type="submit" disabled={!draft.trim() || busy} className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white disabled:opacity-40" aria-label="Send"><Send /></button>
       </form>
+
+      {isGroup && showInfo && (
+        <GroupInfoPanel
+          conversationId={conversationId} name={name} members={members} createdById={createdById}
+          currentUserId={me} iAmGroupAdmin={iAmGroupAdmin} onClose={() => setShowInfo(false)}
+        />
+      )}
     </div>
   );
 }

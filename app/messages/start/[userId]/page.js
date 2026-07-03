@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
+import { isBlockedEitherWay } from "@/lib/privacy";
+import { findOrCreate1to1 } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
 
@@ -14,16 +16,8 @@ export default async function StartChat({ params }) {
   const target = await prisma.user.findUnique({ where: { id: other }, select: { id: true } });
   if (!target) redirect("/messages");
 
-  const blocked = await prisma.block.findFirst({
-    where: { OR: [{ blockerId: me, blockedId: other }, { blockerId: other, blockedId: me }] },
-  });
-  if (blocked) redirect("/messages");
+  if (await isBlockedEitherWay(me, other, viewer.role)) redirect("/messages");
 
-  const [aId, bId] = [me, other].sort();
-  const convo = await prisma.conversation.upsert({
-    where: { aId_bId: { aId, bId } },
-    update: {},
-    create: { aId, bId },
-  });
+  const convo = await findOrCreate1to1(me, other);
   redirect(`/messages/${convo.id}`);
 }
