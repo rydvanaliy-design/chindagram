@@ -22,6 +22,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
   const [busy, setBusy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [readState, setReadState] = useState(() => new Map(members.map((m) => [m.id, m.lastReadAt])));
   const bottomRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -42,6 +43,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
       const payload = JSON.parse(e.data);
       if (payload.kind === "message") addIfNew(payload.message);
       else if (payload.kind === "reaction") applyReaction(payload.messageId, payload.reactions);
+      else if (payload.kind === "read") setReadState((prev) => new Map(prev).set(payload.userId, payload.lastReadAt));
     });
     return () => es.close();
   }, [conversationId]);
@@ -97,6 +99,18 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
     if (p.mediaType) return { IMAGE: "📷 Photo", VIDEO: "📹 Video", VOICE: "🎤 Voice note" }[p.mediaType] || "Attachment";
     return "";
   }
+  // Read receipt for the most recent message you sent — WhatsApp/Instagram
+  // style "Seen" rather than a per-message tick, kept to the last message
+  // in the thread to avoid a noisy receipt under every single bubble.
+  function seenText(msg) {
+    if (msg.senderId !== me) return null;
+    const readers = members.filter((m) => {
+      const at = readState.get(m.id);
+      return m.id !== me && at && new Date(at) >= new Date(msg.createdAt);
+    });
+    if (readers.length === 0) return null;
+    return isGroup ? `Seen by ${readers.length}` : "Seen";
+  }
 
   return (
     <div className="flex h-[100dvh] flex-col bg-white">
@@ -112,10 +126,12 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
 
       <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-4">
         {messages.length === 0 && <p className="pt-10 text-center text-sm text-gray-400">No messages yet. Say hi.</p>}
-        {messages.map((m) => {
+        {messages.map((m, i) => {
           const mine = m.senderId === me;
+          const seen = i === messages.length - 1 ? seenText(m) : null;
           return (
-            <div key={m.id} className={`group flex items-center gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+            <div key={m.id} className="flex flex-col" style={{ alignItems: mine ? "flex-end" : "flex-start" }}>
+            <div className={`group flex items-center gap-2 ${mine ? "justify-end" : "justify-start"}`}>
               {!mine && !m.removed && (
                 <button onClick={() => report(m.id)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">report</button>
               )}
@@ -151,6 +167,8 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
               {isAdmin && !m.removed && (
                 <button onClick={() => remove(m.id)} className="text-[11px] text-red-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600">remove</button>
               )}
+            </div>
+            {seen && <p className="mt-0.5 px-1 text-[11px] text-gray-400">{seen}</p>}
             </div>
           );
         })}

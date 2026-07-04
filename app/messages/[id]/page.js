@@ -25,7 +25,10 @@ export default async function ThreadPage({ params }) {
   await prisma.conversationMember.update({ where: { id: myMembership.id }, data: { lastReadAt: new Date() } });
 
   const display = conversationDisplay(convo, me);
-  const members = convo.members.map((m) => ({ id: m.user.id, name: m.user.name, image: m.user.image, role: m.role }));
+  const members = convo.members.map((m) => ({
+    id: m.user.id, name: m.user.name, image: m.user.image, role: m.role,
+    lastReadAt: m.userId === me ? new Date().toISOString() : (m.lastReadAt ? m.lastReadAt.toISOString() : null),
+  }));
 
   return (
     <ChatThread

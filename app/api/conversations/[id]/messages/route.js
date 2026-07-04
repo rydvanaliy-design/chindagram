@@ -21,10 +21,13 @@ export async function GET(req, { params }) {
 
   const messages = await prisma.message.findMany({ where, orderBy: { createdAt: "asc" }, take: 100, include: messageInclude });
 
+  const lastReadAt = new Date();
   await prisma.conversationMember.update({
     where: { conversationId_userId: { conversationId: params.id, userId: me } },
-    data: { lastReadAt: new Date() },
+    data: { lastReadAt },
   });
+  // Let other open sessions in this conversation see the read receipt update live.
+  publish(params.id, { kind: "read", userId: me, lastReadAt: lastReadAt.toISOString() });
 
   return NextResponse.json({ messages: messages.map((m) => toMessageProps(m, me)) });
 }
