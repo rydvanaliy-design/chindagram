@@ -13,6 +13,7 @@ import PostCard from "@/components/PostCard";
 import ClubJoinButton from "@/components/ClubJoinButton";
 import ClubRequestRow from "@/components/ClubRequestRow";
 import ClubMemberRow from "@/components/ClubMemberRow";
+import StoriesBar from "@/components/StoriesBar";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,23 @@ export default async function ClubPage({ params, searchParams }) {
     take: 5,
   });
 
+  const meUser = await prisma.user.findUnique({ where: { id: me }, select: { id: true, name: true, image: true } });
+  const clubStoryRows = await prisma.story.findMany({
+    where: { clubId: club.id, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "asc" },
+    include: { author: { select: { id: true, name: true, image: true } } },
+  });
+  const clubStoryMap = new Map();
+  for (const s of clubStoryRows) {
+    if (!clubStoryMap.has(s.authorId)) clubStoryMap.set(s.authorId, { author: s.author, stories: [] });
+    clubStoryMap.get(s.authorId).stories.push({
+      id: s.id, imageUrl: s.imageUrl, repostOf: null,
+      stickerType: s.stickerType, stickerQuestion: s.stickerQuestion,
+      stickerOptions: s.stickerOptions, stickerCorrectIndex: s.stickerCorrectIndex,
+    });
+  }
+  const clubStoryGroups = [...clubStoryMap.values()];
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
@@ -80,6 +98,12 @@ export default async function ClubPage({ params, searchParams }) {
             <ClubJoinButton clubId={club.id} initialStatus={myMembership?.status || "NONE"} />
           </div>
         </div>
+
+        {(clubStoryGroups.length > 0 || iAmMember) && (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <StoriesBar groups={clubStoryGroups} me={meUser} newStoryHref={`/stories/new?clubId=${club.id}`} showAdd={iAmMember} />
+          </div>
+        )}
 
         {iAmAdmin && pendingRequests.length > 0 && (
           <>

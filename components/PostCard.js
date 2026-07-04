@@ -12,6 +12,7 @@ import SaveButton from "@/components/SaveButton";
 import PostEmbed from "@/components/PostEmbed";
 import CommentItem from "@/components/CommentItem";
 import CommentComposer from "@/components/CommentComposer";
+import TranslateToggle from "@/components/TranslateToggle";
 import { Comment as CommentIcon, Flag } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 import { CATEGORY_LABELS } from "@/lib/postkinds";
@@ -186,7 +187,8 @@ export default function PostCard({ post, currentUserId, isAdmin, canManageClub =
 
       {post.kind === "REPOST" ? (
         <>
-          {post.caption && <p className="px-4 pb-2 text-[15px] text-gray-900"><RichText text={post.caption} /></p>}
+          {post.caption && <p className="px-4 pb-1 text-[15px] text-gray-900"><RichText text={post.caption} /></p>}
+          {post.caption && <div className="px-4 pb-1"><TranslateToggle text={post.caption} /></div>}
           <PostEmbed post={post.repostOf} className="mx-4 mb-1" />
         </>
       ) : post.kind === "AUDIO" && hasMedia ? (
@@ -198,10 +200,14 @@ export default function PostCard({ post, currentUserId, isAdmin, canManageClub =
       ) : post.kind === "LINK" ? (
         <LinkCard url={post.linkUrl} />
       ) : post.kind === "TEXT" ? (
-        <p className="px-4 pb-1 text-[15px] text-gray-900"><RichText text={post.caption} /></p>
+        <>
+          <p className="px-4 pb-1 text-[15px] text-gray-900"><RichText text={post.caption} /></p>
+          <div className="px-4 pb-1"><TranslateToggle text={post.caption} /></div>
+        </>
       ) : post.kind === "POLL" && post.poll ? (
         <>
-          {post.caption && <p className="px-4 pb-2 text-[15px] font-medium text-gray-900"><RichText text={post.caption} /></p>}
+          {post.caption && <p className="px-4 pb-1 text-[15px] font-medium text-gray-900"><RichText text={post.caption} /></p>}
+          {post.caption && <div className="px-4 pb-1"><TranslateToggle text={post.caption} /></div>}
           <Poll postId={post.id} poll={post.poll} />
         </>
       ) : null}
@@ -216,10 +222,13 @@ export default function PostCard({ post, currentUserId, isAdmin, canManageClub =
       </div>
 
       {post.caption && post.kind !== "TEXT" && post.kind !== "POLL" && post.kind !== "REPOST" && (
-        <p className="px-4 pt-1 text-sm">
-          <Link href={`/u/${post.author.id}`} className="font-semibold hover:underline">{post.author.name}</Link>{" "}
-          <RichText text={post.caption} />
-        </p>
+        <div className="px-4 pt-1">
+          <p className="text-sm">
+            <Link href={`/u/${post.author.id}`} className="font-semibold hover:underline">{post.author.name}</Link>{" "}
+            <RichText text={post.caption} />
+          </p>
+          <TranslateToggle text={post.caption} />
+        </div>
       )}
 
       {comments.length > 0 && (

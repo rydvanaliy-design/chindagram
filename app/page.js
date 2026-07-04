@@ -45,8 +45,10 @@ export default async function FeedPage({ searchParams }) {
   const excludeIds = [...blockedIds, ...mutedRows.map((m) => m.mutedId)];
 
   // Stories stay tied to who you follow, regardless of which feed tab is open.
+  // Club stories live on the club's own page only (same leak-prevention rule
+  // as club posts). Close-friends-only stories are filtered below in JS.
   const stories = await prisma.story.findMany({
-    where: { expiresAt: { gt: new Date() }, authorId: { in: [me, ...followingIds] } },
+    where: { expiresAt: { gt: new Date() }, authorId: { in: [me, ...followingIds] }, clubId: null },
     orderBy: { createdAt: "asc" },
     include: {
       author: { select: { id: true, name: true, image: true } },
@@ -60,8 +62,13 @@ export default async function FeedPage({ searchParams }) {
       },
     },
   });
+  const closeFriendAuthorIds = new Set(
+    (await prisma.closeFriend.findMany({ where: { friendId: me, ownerId: { in: followingIds } }, select: { ownerId: true } }))
+      .map((r) => r.ownerId)
+  );
   const storyMap = new Map();
   for (const s of stories) {
+    if (s.closeFriendsOnly && s.authorId !== me && !closeFriendAuthorIds.has(s.authorId)) continue;
     if (!storyMap.has(s.authorId)) storyMap.set(s.authorId, { author: s.author, stories: [] });
     const repostOf = s.repostOf ? {
       id: s.repostOf.id, kind: s.repostOf.kind, caption: s.repostOf.caption, linkUrl: s.repostOf.linkUrl,
@@ -69,7 +76,11 @@ export default async function FeedPage({ searchParams }) {
       media: s.repostOf.media.map((m) => ({ url: m.url, type: m.type, name: m.name, alt: m.alt })),
       unavailable: s.repostOf.removed || (s.repostOf.status !== "VISIBLE" && s.repostOf.author.id !== me),
     } : (s.repostOfId ? { unavailable: true } : null);
-    storyMap.get(s.authorId).stories.push({ id: s.id, imageUrl: s.imageUrl, repostOf });
+    storyMap.get(s.authorId).stories.push({
+      id: s.id, imageUrl: s.imageUrl, repostOf,
+      stickerType: s.stickerType, stickerQuestion: s.stickerQuestion,
+      stickerOptions: s.stickerOptions, stickerCorrectIndex: s.stickerCorrectIndex,
+    });
   }
   const groups = [...storyMap.values()].sort((a, b) => (a.author.id === me ? -1 : b.author.id === me ? 1 : 0));
 

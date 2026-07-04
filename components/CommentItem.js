@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import RichText from "@/components/RichText";
+import TranslateToggle from "@/components/TranslateToggle";
 import { Heart, HeartFilled } from "@/components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -53,6 +54,7 @@ export default function CommentItem({ comment, isAdmin, canPin, onReply, onDelet
           {comment.mediaUrl && (
             <img src={comment.mediaUrl} alt="" className="mt-1 h-24 w-24 rounded-lg object-cover" />
           )}
+          {comment.body && <TranslateToggle text={comment.body} />}
           <span className="mt-0.5 flex items-center gap-3 text-[11px] text-gray-400">
             <span>{ago(comment.createdAt, t)}</span>
             {likeCount > 0 && <span>{likeCount === 1 ? t("posts.comments.like") : t("posts.comments.likes", { count: likeCount })}</span>}

@@ -3,12 +3,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/postkinds";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { useAiEnabled } from "@/lib/useAiEnabled";
 
 const DOC_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,application/pdf,text/plain";
 
 export default function Composer({ isStaff = false, clubId = null }) {
   const router = useRouter();
   const { t } = useT();
+  const aiEnabled = useAiEnabled();
+  const [aiBusy, setAiBusy] = useState(false);
   // Post types the composer can create. More are added in later parts.
   const TYPES = [
     { key: "photo", label: t("posts.composer.types.photo") },
@@ -54,6 +57,28 @@ export default function Composer({ isStaff = false, clubId = null }) {
 
   function onAltTextChange(i, value) {
     setAltTexts((arr) => arr.map((v, j) => (j === i ? value : v)));
+  }
+
+  // One button covers both spec asks: an empty caption gets a fresh
+  // suggestion from a short hint; a caption that already has a draft gets
+  // lightly polished instead.
+  async function useAiHelper() {
+    setAiBusy(true);
+    try {
+      if (!caption.trim()) {
+        const hint = window.prompt(t("posts.composer.aiHintPrompt"));
+        if (!hint || !hint.trim()) { setAiBusy(false); return; }
+        const res = await fetch("/api/ai/caption", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hint: hint.trim() }) });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) setCaption(d.suggestion); else setError(d.error || t("posts.composer.aiError"));
+      } else {
+        const res = await fetch("/api/ai/assist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draft: caption }) });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) setCaption(d.suggestion); else setError(d.error || t("posts.composer.aiError"));
+      }
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   async function onSubmit(e) {
@@ -190,9 +215,17 @@ export default function Composer({ isStaff = false, clubId = null }) {
         </label>
       )}
 
-      <textarea value={caption} onChange={(e) => setCaption(e.target.value)}
-        placeholder={type === "text" ? t("posts.composer.textPlaceholder") : type === "poll" ? t("posts.composer.pollQuestionPlaceholder") : t("posts.composer.captionPlaceholder")} rows={type === "poll" ? 2 : 3}
-        className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
+      <div>
+        <textarea value={caption} onChange={(e) => setCaption(e.target.value)}
+          placeholder={type === "text" ? t("posts.composer.textPlaceholder") : type === "poll" ? t("posts.composer.pollQuestionPlaceholder") : t("posts.composer.captionPlaceholder")} rows={type === "poll" ? 2 : 3}
+          className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
+        {aiEnabled && type !== "poll" && (
+          <button type="button" onClick={useAiHelper} disabled={aiBusy}
+            className="mt-1 text-xs font-semibold text-brand disabled:opacity-50">
+            {aiBusy ? t("posts.composer.aiBusy") : caption.trim() ? t("posts.composer.aiImprove") : t("posts.composer.aiSuggest")}
+          </button>
+        )}
+      </div>
 
       {type === "poll" && (
         <div className="space-y-2">

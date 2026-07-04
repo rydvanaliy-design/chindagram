@@ -37,6 +37,8 @@ model User {
   followers   Follow[]  @relation("following")
   reportsMade Report[]  @relation("reporter")
   stories     Story[]
+  highlights     Highlight[]
+  storyResponses StoryResponse[]
 
   messagesSent   Message[]      @relation("sender")
   conversationsCreated    Conversation[]       @relation("conversationCreator")
@@ -155,6 +157,7 @@ model Club {
   members ClubMember[]
   posts   Post[]
   events  Event[]
+  stories Story[]
 }
 
 model ClubMember {
@@ -369,8 +372,66 @@ model Story {
   repostOfId String?
   repostOf   Post?   @relation(fields: [repostOfId], references: [id], onDelete: SetNull)
 
+  // Saved to a named highlight on the author's profile — stays visible past
+  // expiresAt when set (the 24h feed view still filters by expiresAt; the
+  // highlights view doesn't).
+  highlightId String?
+  highlight   Highlight? @relation(fields: [highlightId], references: [id], onDelete: SetNull)
+
+  // Visible only to the author's close-friends list (lib CloseFriend) when true.
+  closeFriendsOnly Boolean @default(false)
+
+  // A club story lives on the club's own page instead of / alongside the
+  // author's personal profile — mirrors Post.clubId's pattern.
+  clubId String?
+  club   Club?   @relation(fields: [clubId], references: [id], onDelete: SetNull)
+
+  // Interactive sticker: at most one per story. POLL/QUIZ carry JSON-encoded
+  // options in stickerOptions; QUESTION leaves it null (free-text answers).
+  stickerType     String? // POLL | QUIZ | QUESTION
+  stickerQuestion String?
+  stickerOptions  String? // JSON array of strings, POLL/QUIZ only
+  stickerCorrectIndex Int? // QUIZ only — index into stickerOptions
+
+  responses StoryResponse[]
+  replyMessages Message[]
+
   @@index([expiresAt])
   @@index([authorId])
+  @@index([highlightId])
+  @@index([clubId])
+}
+
+// A named collection of past stories on a profile, e.g. "Sports Day".
+model Highlight {
+  id        String   @id @default(cuid())
+  name      String
+  coverUrl  String?
+  createdAt DateTime @default(now())
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  stories Story[]
+
+  @@index([ownerId])
+}
+
+// A viewer's response to a story's interactive sticker. One response per
+// viewer per story. optionIndex is used for POLL/QUIZ; text for QUESTION.
+model StoryResponse {
+  id        String   @id @default(cuid())
+  optionIndex Int?
+  text        String?
+  createdAt DateTime @default(now())
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@index([storyId])
 }
 
 model Comment {
@@ -529,6 +590,11 @@ model Message {
   sharedPostId String?
   sharedPost   Post?   @relation(fields: [sharedPostId], references: [id], onDelete: SetNull)
 
+  // Replying to / reacting to someone's story — sent as a private DM to the
+  // author, same as Instagram. SetNull if the story later expires and is cleaned up.
+  storyReplyId String?
+  storyReply   Story?  @relation(fields: [storyReplyId], references: [id], onDelete: SetNull)
+
   // Replying to another message in the same conversation.
   parentId String?
   parent   Message?  @relation("messageReplies", fields: [parentId], references: [id], onDelete: SetNull)
@@ -572,6 +638,7 @@ model Notification {
   postId  String?
   clubId  String?
   eventId String?
+  storyId String?
 
   @@index([recipientId, read])
   @@index([recipientId, createdAt])

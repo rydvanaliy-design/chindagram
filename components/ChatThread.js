@@ -208,7 +208,21 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
                       <span className="font-semibold">{m.parent.senderName}</span>: {parentPreviewText(m.parent)}
                     </div>
                   )}
-                  {!m.removed && m.sharedPost ? (
+                  {!m.removed && m.storyReply ? (
+                    <>
+                      <div className="mb-1 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 text-xs text-gray-500">
+                        {!m.storyReply.unavailable && m.storyReply.imageUrl && (
+                          <img src={m.storyReply.imageUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                        )}
+                        <span>{m.storyReply.unavailable ? t("messages.thread.storyUnavailable") : t("messages.thread.repliedToStory")}</span>
+                      </div>
+                      {m.body && (
+                        <span className={`mt-1 block whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
+                          {m.body}
+                        </span>
+                      )}
+                    </>
+                  ) : !m.removed && m.sharedPost ? (
                     <>
                       <PostEmbed post={m.sharedPost} className="w-64 max-w-full" />
                       {m.body && (

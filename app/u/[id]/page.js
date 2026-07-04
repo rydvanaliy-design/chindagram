@@ -78,6 +78,12 @@ export default async function ProfilePage({ params }) {
   const followerCount = await prisma.follow.count({ where: { followingId: user.id, status: "ACCEPTED" } });
   const followingCount = await prisma.follow.count({ where: { followerId: user.id, status: "ACCEPTED" } });
 
+  const highlights = canViewContent ? await prisma.highlight.findMany({
+    where: { ownerId: user.id },
+    orderBy: { createdAt: "desc" },
+    include: { stories: { orderBy: { createdAt: "desc" }, take: 1, select: { imageUrl: true } } },
+  }) : [];
+
   // Posts the user authored OR co-authored (accepted), respecting visibility.
   const posts = canViewContent ? await prisma.post.findMany({
     where: {
@@ -186,6 +192,23 @@ export default async function ProfilePage({ params }) {
 
           <p className="mt-3 text-xs text-gray-400">{t("profile.joined", { date: joinedLabel(user.createdAt, locale) })}</p>
         </section>
+
+        {highlights.length > 0 && (
+          <section className="no-scrollbar mt-4 flex gap-3 overflow-x-auto">
+            {highlights.map((h) => (
+              <Link key={h.id} href={`/highlights/${h.id}`} className="flex w-16 shrink-0 flex-col items-center gap-1">
+                <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-full border border-gray-200 bg-gray-100">
+                  {h.stories[0]?.imageUrl ? (
+                    <img src={h.stories[0].imageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-lg">✨</span>
+                  )}
+                </span>
+                <span className="w-16 truncate text-center text-xs text-gray-700">{h.name}</span>
+              </Link>
+            ))}
+          </section>
+        )}
 
         {!canViewContent ? (
           <section className="mt-10 flex flex-col items-center py-10 text-center">

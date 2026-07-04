@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/guards";
 
 // Add/remove someone from your close-friends list. One-way, like Instagram's —
-// they aren't notified. Groundwork for close-friends-only stories later.
+// they aren't notified. Gates visibility of your close-friends-only stories.
 export async function POST(req, { params }) {
   const me = await requireUserId();
   if (!me) return NextResponse.json({ error: "Not signed in." }, { status: 401 });

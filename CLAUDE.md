@@ -21,7 +21,7 @@ npm install
 npx prisma migrate dev --name init   # creates/updates dev.db; first time or after schema changes
 npm run dev                           # http://localhost:3000
 ```
-- `.env` holds `DATABASE_URL="file:./dev.db"` and `AUTH_SECRET`.
+- `.env` holds `DATABASE_URL="file:./dev.db"` and `AUTH_SECRET`. Optionally add `ANTHROPIC_API_KEY` to turn on the AI helpers (caption suggestions, translation, writing assist) — without it, those buttons just stay hidden (`lib/ai.js`).
 - **The first account created becomes ADMIN** (bootstrap in `app/api/register/route.js`).
 - To reset all data: stop the app, `rm -f prisma/dev.db`, re-run `prisma migrate dev`.
 
