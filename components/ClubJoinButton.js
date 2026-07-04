@@ -1,11 +1,13 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
-const LABEL = { NONE: "Join", PENDING: "Requested", ACCEPTED: "Joined" };
+const LABEL_KEY = { NONE: "clubs.join.join", PENDING: "clubs.join.requested", ACCEPTED: "clubs.join.joined" };
 
 export default function ClubJoinButton({ clubId, initialStatus }) {
   const router = useRouter();
+  const { t } = useT();
   const [status, setStatus] = useState(initialStatus);
   const [busy, setBusy] = useState(false);
 
@@ -26,7 +28,7 @@ export default function ClubJoinButton({ clubId, initialStatus }) {
           : "rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
       }
     >
-      {LABEL[status] || "Join"}
+      {t(LABEL_KEY[status] || "clubs.join.join")}
     </button>
   );
 }

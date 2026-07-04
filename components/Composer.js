@@ -2,24 +2,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/postkinds";
-
-// Post types the composer can create. More are added in later parts.
-const TYPES = [
-  { key: "photo", label: "Photo / Video" },
-  { key: "text", label: "Text" },
-  { key: "link", label: "Link" },
-  { key: "poll", label: "Poll" },
-  { key: "audio", label: "Audio" },
-  { key: "document", label: "File" },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const DOC_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,application/pdf,text/plain";
 
 export default function Composer({ isStaff = false, clubId = null }) {
   const router = useRouter();
+  const { t } = useT();
+  // Post types the composer can create. More are added in later parts.
+  const TYPES = [
+    { key: "photo", label: t("posts.composer.types.photo") },
+    { key: "text", label: t("posts.composer.types.text") },
+    { key: "link", label: t("posts.composer.types.link") },
+    { key: "poll", label: t("posts.composer.types.poll") },
+    { key: "audio", label: t("posts.composer.types.audio") },
+    { key: "document", label: t("posts.composer.types.document") },
+  ];
   const [type, setType] = useState("photo");
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
+  const [altTexts, setAltTexts] = useState([]);
   const [isVideo, setIsVideo] = useState(false);
   const [caption, setCaption] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
@@ -34,31 +36,37 @@ export default function Composer({ isStaff = false, clubId = null }) {
   function onPick(e) {
     const picked = Array.from(e.target.files || []);
     setError("");
-    if (picked.length === 0) { setFiles([]); setPreviews([]); return; }
+    if (picked.length === 0) { setFiles([]); setPreviews([]); setAltTexts([]); return; }
     const video = picked.find((f) => f.type.startsWith("video/"));
     if (video) {
       setIsVideo(true);
       setFiles([video]);
       setPreviews([URL.createObjectURL(video)]);
+      setAltTexts([]);
     } else {
       const imgs = picked.slice(0, 10);
       setIsVideo(false);
       setFiles(imgs);
       setPreviews(imgs.map((f) => URL.createObjectURL(f)));
+      setAltTexts(imgs.map(() => ""));
     }
+  }
+
+  function onAltTextChange(i, value) {
+    setAltTexts((arr) => arr.map((v, j) => (j === i ? value : v)));
   }
 
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
-    if (type === "photo" && files.length === 0) { setError("Choose photos or a video first."); return; }
-    if (type === "text" && !caption.trim()) { setError("Write something for your post."); return; }
-    if (type === "link" && !linkUrl.trim()) { setError("Add a link."); return; }
-    if ((type === "audio" || type === "document") && !attachment) { setError("Choose a file to upload."); return; }
+    if (type === "photo" && files.length === 0) { setError(t("posts.composer.errors.choosePhotos")); return; }
+    if (type === "text" && !caption.trim()) { setError(t("posts.composer.errors.writeSomething")); return; }
+    if (type === "link" && !linkUrl.trim()) { setError(t("posts.composer.errors.addLink")); return; }
+    if ((type === "audio" || type === "document") && !attachment) { setError(t("posts.composer.errors.chooseFile")); return; }
     const cleanOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
     if (type === "poll") {
-      if (!caption.trim()) { setError("Add a poll question."); return; }
-      if (cleanOptions.length < 2) { setError("A poll needs at least two options."); return; }
+      if (!caption.trim()) { setError(t("posts.composer.errors.addPollQuestion")); return; }
+      if (cleanOptions.length < 2) { setError(t("posts.composer.errors.pollNeedsTwoOptions")); return; }
     }
     setBusy(true);
 
@@ -68,7 +76,10 @@ export default function Composer({ isStaff = false, clubId = null }) {
     form.append("category", category);
     if (type === "link") form.append("linkUrl", linkUrl);
     if (type === "poll") cleanOptions.forEach((o) => form.append("option", o));
-    if (type === "photo") files.forEach((f) => form.append("media", f));
+    if (type === "photo") {
+      files.forEach((f) => form.append("media", f));
+      if (!isVideo) form.append("altTexts", JSON.stringify(altTexts));
+    }
     if (type === "audio" || type === "document") form.append("media", attachment);
     if (collaborator.trim()) form.append("collaborator", collaborator.trim());
     if (clubId) form.append("clubId", clubId);
@@ -76,7 +87,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
     const res = await fetch("/api/posts", { method: "POST", body: form });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setError(d.error || "Could not post. Try again.");
+      setError(d.error || t("posts.composer.errors.generic"));
       setBusy(false);
       return;
     }
@@ -89,7 +100,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
     if (clubId) {
       // Posting to a club keeps you on the same page — reset the form
       // instead of leaving it stuck on "Posting…".
-      setType("photo"); setFiles([]); setPreviews([]); setIsVideo(false);
+      setType("photo"); setFiles([]); setPreviews([]); setAltTexts([]); setIsVideo(false);
       setCaption(""); setLinkUrl(""); setPollOptions(["", ""]); setAttachment(null);
       setCollaborator(""); setCategory("NONE"); setBusy(false);
     }
@@ -100,11 +111,11 @@ export default function Composer({ isStaff = false, clubId = null }) {
   if (held) {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
-        <p className="mb-1 text-lg font-semibold text-amber-700">Sent for review</p>
+        <p className="mb-1 text-lg font-semibold text-amber-700">{t("posts.composer.heldTitle")}</p>
         <p className="mb-4 text-sm text-amber-700">
-          Your post will appear once a teacher or admin approves it. You can see it on your profile, marked “Pending review,” in the meantime.
+          {t("posts.composer.heldBody")}
         </p>
-        <button onClick={() => router.push(clubId ? `/clubs/${clubId}` : "/")} className="ig-btn">Back</button>
+        <button onClick={() => router.push(clubId ? `/clubs/${clubId}` : "/")} className="ig-btn">{t("posts.composer.back")}</button>
       </div>
     );
   }
@@ -113,12 +124,12 @@ export default function Composer({ isStaff = false, clubId = null }) {
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       {/* Type picker */}
       <div className="flex flex-wrap gap-2">
-        {TYPES.map((t) => (
-          <button type="button" key={t.key} onClick={() => { setType(t.key); setError(""); }}
-            className={type === t.key
+        {TYPES.map((typeOption) => (
+          <button type="button" key={typeOption.key} onClick={() => { setType(typeOption.key); setError(""); }}
+            className={type === typeOption.key
               ? "rounded-full bg-brand px-3 py-1 text-sm font-semibold text-white"
               : "rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-600"}>
-            {t.label}
+            {typeOption.label}
           </button>
         ))}
       </div>
@@ -127,7 +138,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
         <>
           <label className="flex aspect-square w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
             {previews.length === 0 ? (
-              <span className="px-6">Tap to choose photos (up to 10) or one video</span>
+              <span className="px-6">{t("posts.composer.choosePhotosHint")}</span>
             ) : isVideo ? (
               <video src={previews[0]} className="h-full w-full object-cover" muted />
             ) : (
@@ -142,12 +153,28 @@ export default function Composer({ isStaff = false, clubId = null }) {
               ))}
             </div>
           )}
-          {isVideo && <p className="text-xs text-gray-500">This will be posted as a Reel.</p>}
+          {!isVideo && previews.length > 0 && (
+            <div className="space-y-2">
+              {previews.map((src, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <img src={src} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                  <input
+                    value={altTexts[i] || ""}
+                    onChange={(e) => onAltTextChange(i, e.target.value)}
+                    aria-label={t("posts.composer.altTextLabel")}
+                    placeholder={t("posts.composer.altTextPlaceholder")}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs outline-none focus:border-brand"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {isVideo && <p className="text-xs text-gray-500">{t("posts.composer.willBeReel")}</p>}
         </>
       )}
 
       {type === "link" && (
-        <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://…" inputMode="url"
+        <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t("posts.composer.linkPlaceholder")} inputMode="url"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
       )}
 
@@ -156,7 +183,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
           {attachment ? (
             <span className="truncate font-medium text-gray-800">{type === "audio" ? "🎵 " : "📄 "}{attachment.name}</span>
           ) : (
-            <span>{type === "audio" ? "Choose an audio file (MP3, WAV, M4A…)" : "Choose a file (PDF, Word, PowerPoint, Excel, text)"}</span>
+            <span>{type === "audio" ? t("posts.composer.chooseAudio") : t("posts.composer.chooseDocument")}</span>
           )}
           <input type="file" accept={type === "audio" ? "audio/*" : DOC_ACCEPT}
             onChange={(e) => { setAttachment(e.target.files?.[0] || null); setError(""); }} className="hidden" />
@@ -164,7 +191,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
       )}
 
       <textarea value={caption} onChange={(e) => setCaption(e.target.value)}
-        placeholder={type === "text" ? "What's on your mind?" : type === "poll" ? "Ask a question…" : "Write a caption…"} rows={type === "poll" ? 2 : 3}
+        placeholder={type === "text" ? t("posts.composer.textPlaceholder") : type === "poll" ? t("posts.composer.pollQuestionPlaceholder") : t("posts.composer.captionPlaceholder")} rows={type === "poll" ? 2 : 3}
         className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
 
       {type === "poll" && (
@@ -173,27 +200,27 @@ export default function Composer({ isStaff = false, clubId = null }) {
             <div key={i} className="flex items-center gap-2">
               <input value={opt} maxLength={120}
                 onChange={(e) => setPollOptions((arr) => arr.map((v, j) => (j === i ? e.target.value : v)))}
-                placeholder={`Option ${i + 1}`}
+                placeholder={t("posts.composer.pollOptionPlaceholder", { number: i + 1 })}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
               {pollOptions.length > 2 && (
                 <button type="button" onClick={() => setPollOptions((arr) => arr.filter((_, j) => j !== i))}
-                  className="text-gray-400 hover:text-red-600" title="Remove option">✕</button>
+                  className="text-gray-400 hover:text-red-600" title={t("posts.composer.removeOption")} aria-label={t("posts.composer.removeOption")}>✕</button>
               )}
             </div>
           ))}
           {pollOptions.length < 6 && (
             <button type="button" onClick={() => setPollOptions((arr) => [...arr, ""])}
-              className="text-sm font-semibold text-brand">+ Add option</button>
+              className="text-sm font-semibold text-brand">{t("posts.composer.addOption")}</button>
           )}
         </div>
       )}
 
       {/* Optional co-author */}
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-500">Co-author <span className="text-gray-400">(optional — their @username)</span></label>
+        <label className="mb-1 block text-xs font-medium text-gray-500">{t("posts.composer.coAuthorLabel")} <span className="text-gray-400">{t("posts.composer.coAuthorHint")}</span></label>
         <div className="flex items-center gap-1">
           <span className="text-gray-400">@</span>
-          <input value={collaborator} onChange={(e) => setCollaborator(e.target.value)} placeholder="username"
+          <input value={collaborator} onChange={(e) => setCollaborator(e.target.value)} placeholder={t("posts.composer.coAuthorPlaceholder")}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand" />
         </div>
       </div>
@@ -201,10 +228,10 @@ export default function Composer({ isStaff = false, clubId = null }) {
       {/* School content type — teachers/admins only */}
       {isStaff && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-500">School content type</label>
+          <label className="mb-1 block text-xs font-medium text-gray-500">{t("posts.composer.schoolContentType")}</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand">
-            <option value="NONE">Regular post</option>
+            <option value="NONE">{t("posts.composer.regularPost")}</option>
             {CATEGORIES.filter((c) => c !== "NONE").map((c) => (
               <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
             ))}
@@ -213,7 +240,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <button type="submit" disabled={busy} className="ig-btn py-2.5">{busy ? "Posting…" : "Share"}</button>
+      <button type="submit" disabled={busy} className="ig-btn py-2.5">{busy ? t("posts.composer.posting") : t("posts.composer.share")}</button>
     </form>
   );
 }

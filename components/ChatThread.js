@@ -7,6 +7,7 @@ import GroupInfoPanel from "@/components/GroupInfoPanel";
 import MessageReactionButton from "@/components/MessageReactionButton";
 import { REACTION_EMOJI } from "@/lib/reactions";
 import { ChevronLeft, Send, X } from "@/components/icons";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 function ReactionSummary({ reactions }) {
   const entries = Object.entries(reactions || {}).filter(([, c]) => c > 0);
@@ -24,6 +25,7 @@ function MessageMedia({ url, type }) {
 }
 
 export default function ChatThread({ conversationId, me, initial, isAdmin, isGroup, name, image, otherId, members, createdById, iAmGroupAdmin }) {
+  const { t } = useT();
   const [messages, setMessages] = useState(initial);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -83,7 +85,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      window.alert("Couldn't access the microphone.");
+      window.alert(t("messages.thread.micError"));
       return;
     }
     const recorder = new MediaRecorder(stream);
@@ -114,7 +116,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
       form.append("file", attachment.file);
       form.append("kind", attachment.kind === "voice" ? "voice" : "media");
       const res = await fetch("/api/messages/upload", { method: "POST", body: form });
-      if (!res.ok) { setBusy(false); window.alert("Could not upload file."); return; }
+      if (!res.ok) { setBusy(false); window.alert(t("messages.thread.uploadError")); return; }
       const d = await res.json();
       mediaUrl = d.url; mediaType = d.type;
     }
@@ -139,9 +141,9 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
     }
   }
   async function report(id) {
-    const reason = window.prompt("Report this message (optional reason):") ?? "";
+    const reason = window.prompt(t("messages.thread.reportPrompt")) ?? "";
     const res = await fetch("/api/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messageId: id, reason }) });
-    if (res.ok) window.alert("Reported to admins.");
+    if (res.ok) window.alert(t("messages.thread.reported"));
   }
   async function remove(id) {
     const res = await fetch("/api/admin/remove-message", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messageId: id }) });
@@ -149,12 +151,12 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
   }
 
   function senderName(id) {
-    return members.find((m) => m.id === id)?.name || "Someone";
+    return members.find((m) => m.id === id)?.name || t("messages.thread.someone");
   }
   function parentPreviewText(p) {
-    if (p.removed) return "message removed";
+    if (p.removed) return t("messages.thread.messageRemoved");
     if (p.body) return p.body;
-    if (p.mediaType) return { IMAGE: "📷 Photo", VIDEO: "📹 Video", VOICE: "🎤 Voice note" }[p.mediaType] || "Attachment";
+    if (p.mediaType) return { IMAGE: t("messages.media.photo"), VIDEO: t("messages.media.video"), VOICE: t("messages.media.voice") }[p.mediaType] || t("messages.media.attachment");
     return "";
   }
   // Read receipt for the most recent message you sent — WhatsApp/Instagram
@@ -167,13 +169,13 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
       return m.id !== me && at && new Date(at) >= new Date(msg.createdAt);
     });
     if (readers.length === 0) return null;
-    return isGroup ? `Seen by ${readers.length}` : "Seen";
+    return isGroup ? t("messages.thread.seenByCount", { count: readers.length }) : t("messages.thread.seen");
   }
 
   return (
     <div className="flex h-[100dvh] flex-col bg-white">
       <header className="flex items-center gap-3 border-b border-gray-200 px-3 py-2.5">
-        <Link href="/messages" aria-label="Back" className="text-gray-700"><ChevronLeft /></Link>
+        <Link href="/messages" aria-label={t("messages.thread.back")} className="text-gray-700"><ChevronLeft /></Link>
         <Avatar name={name} image={image} size={36} />
         {isGroup ? (
           <button onClick={() => setShowInfo(true)} className="text-sm font-semibold hover:underline">{name}</button>
@@ -183,7 +185,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
       </header>
 
       <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-4">
-        {messages.length === 0 && <p className="pt-10 text-center text-sm text-gray-400">No messages yet. Say hi.</p>}
+        {messages.length === 0 && <p className="pt-10 text-center text-sm text-gray-400">{t("messages.thread.empty")}</p>}
         {messages.map((m, i) => {
           const mine = m.senderId === me;
           const seen = i === messages.length - 1 ? seenText(m) : null;
@@ -191,10 +193,10 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
             <div key={m.id} className="flex flex-col" style={{ alignItems: mine ? "flex-end" : "flex-start" }}>
               <div className={`group flex items-center gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && !m.removed && (
-                  <button onClick={() => report(m.id)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">report</button>
+                  <button onClick={() => report(m.id)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">{t("messages.thread.report")}</button>
                 )}
                 {!m.removed && (
-                  <button onClick={() => setReplyingTo(m)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">reply</button>
+                  <button onClick={() => setReplyingTo(m)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">{t("messages.thread.reply")}</button>
                 )}
                 {!m.removed && <MessageReactionButton myReaction={m.myReaction} onReact={(type) => react(m.id, type)} />}
                 <div className="max-w-[75%]">
@@ -226,13 +228,13 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
                     </>
                   ) : (
                     <span className={`block whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${m.removed ? "bg-gray-100 italic text-gray-400" : mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
-                      {m.removed ? "message removed" : m.body}
+                      {m.removed ? t("messages.thread.messageRemoved") : m.body}
                     </span>
                   )}
                   <ReactionSummary reactions={m.reactions} />
                 </div>
                 {isAdmin && !m.removed && (
-                  <button onClick={() => remove(m.id)} className="text-[11px] text-red-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600">remove</button>
+                  <button onClick={() => remove(m.id)} className="text-[11px] text-red-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600">{t("messages.thread.remove")}</button>
                 )}
               </div>
               {seen && <p className="mt-0.5 px-1 text-[11px] text-gray-400">{seen}</p>}
@@ -245,9 +247,9 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
       {replyingTo && (
         <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs">
           <span className="min-w-0 truncate text-gray-600">
-            Replying to <span className="font-semibold">{senderName(replyingTo.senderId)}</span>: {parentPreviewText(replyingTo)}
+            {t("messages.thread.replyingTo", { name: senderName(replyingTo.senderId) })}: {parentPreviewText(replyingTo)}
           </span>
-          <button onClick={() => setReplyingTo(null)} aria-label="Cancel reply" className="shrink-0 text-gray-400 hover:text-gray-700"><X /></button>
+          <button onClick={() => setReplyingTo(null)} aria-label={t("messages.thread.cancelReply")} className="shrink-0 text-gray-400 hover:text-gray-700"><X /></button>
         </div>
       )}
       {attachment && (
@@ -259,20 +261,21 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
           ) : (
             <img src={attachment.previewUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
           )}
-          <button onClick={() => setAttachment(null)} aria-label="Remove attachment" className="ml-auto shrink-0 text-gray-400 hover:text-gray-700"><X /></button>
+          <button onClick={() => setAttachment(null)} aria-label={t("messages.thread.removeAttachment")} className="ml-auto shrink-0 text-gray-400 hover:text-gray-700"><X /></button>
         </div>
       )}
       <form onSubmit={send} className="flex items-center gap-2 border-t border-gray-200 p-3">
-        <label className="shrink-0 cursor-pointer text-lg" title="Attach a photo or video">
+        <label className="shrink-0 cursor-pointer text-lg" title={t("messages.thread.attachPhotoVideo")}>
           🖼️
-          <input type="file" accept="image/*,video/*" onChange={pickFile} className="hidden" />
+          <input type="file" accept="image/*,video/*" onChange={pickFile} className="hidden" aria-label={t("messages.thread.attachPhotoVideo")} />
         </label>
-        <button type="button" onClick={toggleRecording} title={recording ? "Stop recording" : "Record a voice note"}
+        <button type="button" onClick={toggleRecording} title={recording ? t("messages.thread.stopRecording") : t("messages.thread.recordVoiceNote")}
+          aria-label={recording ? t("messages.thread.stopRecording") : t("messages.thread.recordVoiceNote")}
           className={`shrink-0 text-lg ${recording ? "animate-pulse text-red-500" : ""}`}>
           {recording ? "⏺️" : "🎤"}
         </button>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message…" className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-gray-400" />
-        <button type="submit" disabled={(!draft.trim() && !attachment) || busy} className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white disabled:opacity-40" aria-label="Send"><Send /></button>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("messages.thread.composerPlaceholder")} className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-gray-400" />
+        <button type="submit" disabled={(!draft.trim() && !attachment) || busy} className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white disabled:opacity-40" aria-label={t("messages.thread.send")}><Send /></button>
       </form>
 
       {isGroup && showInfo && (

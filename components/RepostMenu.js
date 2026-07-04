@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { Repost } from "@/components/icons";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function RepostMenu({ postId }) {
   const router = useRouter();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [contacts, setContacts] = useState(null);
@@ -13,8 +15,15 @@ export default function RepostMenu({ postId }) {
 
   function closeAll() { setOpen(false); setPickingContact(false); }
 
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e) { if (e.key === "Escape") closeAll(); }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   async function shareToFeed() {
-    const caption = window.prompt("Add a comment (optional):") ?? "";
+    const caption = window.prompt(t("posts.repost.commentPrompt")) ?? "";
     setBusy(true);
     const form = new FormData();
     form.append("kind", "REPOST");
@@ -23,8 +32,8 @@ export default function RepostMenu({ postId }) {
     const res = await fetch("/api/posts", { method: "POST", body: form });
     setBusy(false);
     closeAll();
-    if (res.ok) { window.alert("Reposted to your feed."); router.refresh(); }
-    else { const d = await res.json().catch(() => ({})); window.alert(d.error || "Could not repost."); }
+    if (res.ok) { window.alert(t("posts.repost.repostedToFeed")); router.refresh(); }
+    else { const d = await res.json().catch(() => ({})); window.alert(d.error || t("posts.repost.repostError")); }
   }
 
   async function addToStory() {
@@ -34,8 +43,8 @@ export default function RepostMenu({ postId }) {
     });
     setBusy(false);
     closeAll();
-    if (res.ok) { window.alert("Added to your story."); router.refresh(); }
-    else { const d = await res.json().catch(() => ({})); window.alert(d.error || "Could not add to story."); }
+    if (res.ok) { window.alert(t("posts.repost.addedToStory")); router.refresh(); }
+    else { const d = await res.json().catch(() => ({})); window.alert(d.error || t("posts.repost.addToStoryError")); }
   }
 
   async function openContactPicker() {
@@ -54,13 +63,13 @@ export default function RepostMenu({ postId }) {
     });
     setBusy(false);
     closeAll();
-    if (res.ok) window.alert("Sent.");
-    else { const d = await res.json().catch(() => ({})); window.alert(d.error || "Could not send."); }
+    if (res.ok) window.alert(t("posts.repost.sent"));
+    else { const d = await res.json().catch(() => ({})); window.alert(d.error || t("posts.repost.sendError")); }
   }
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen((v) => !v)} aria-label="Repost" className="pt-0.5 text-gray-700 transition active:scale-90 hover:text-brand">
+      <button onClick={() => setOpen((v) => !v)} aria-label={t("posts.repost.repost")} className="pt-0.5 text-gray-700 transition active:scale-90 hover:text-brand">
         <Repost />
       </button>
 
@@ -70,16 +79,16 @@ export default function RepostMenu({ postId }) {
           <div className="absolute bottom-full left-0 z-20 mb-2 w-52 rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
             {!pickingContact ? (
               <>
-                <button disabled={busy} onClick={shareToFeed} className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50">Share to feed</button>
-                <button disabled={busy} onClick={addToStory} className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50">Add to story</button>
-                <button disabled={busy} onClick={openContactPicker} className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50">Send in message</button>
+                <button disabled={busy} onClick={shareToFeed} className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50">{t("posts.repost.shareToFeed")}</button>
+                <button disabled={busy} onClick={addToStory} className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50">{t("posts.repost.addToStory")}</button>
+                <button disabled={busy} onClick={openContactPicker} className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50">{t("posts.repost.sendInMessage")}</button>
               </>
             ) : (
               <div className="max-h-64 overflow-y-auto">
                 {contacts === null ? (
-                  <p className="px-4 py-2 text-xs text-gray-400">Loading…</p>
+                  <p className="px-4 py-2 text-xs text-gray-400">{t("posts.repost.loadingContacts")}</p>
                 ) : contacts.length === 0 ? (
-                  <p className="px-4 py-2 text-xs text-gray-400">No conversations yet — message someone first.</p>
+                  <p className="px-4 py-2 text-xs text-gray-400">{t("posts.repost.noConversations")}</p>
                 ) : contacts.map((c) => (
                   <button key={c.id} disabled={busy} onClick={() => sendTo(c.id)} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50">
                     <Avatar name={c.name} image={c.image} size={24} />

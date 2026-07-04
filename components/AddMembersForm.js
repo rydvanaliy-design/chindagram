@@ -2,8 +2,10 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function AddMembersForm({ conversationId, users, spotsLeft }) {
+  const { t } = useT();
   const router = useRouter();
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState(new Set());
@@ -27,25 +29,25 @@ export default function AddMembersForm({ conversationId, users, spotsLeft }) {
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
-    if (picked.size === 0) { setError("Pick at least one person."); return; }
+    if (picked.size === 0) { setError(t("messages.addMembersForm.pickAtLeastOne")); return; }
     setBusy(true);
     const res = await fetch(`/api/conversations/${conversationId}/members`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberIds: [...picked] }),
     });
     setBusy(false);
-    if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || "Could not add people."); return; }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || t("messages.addMembersForm.addError")); return; }
     router.push(`/messages/${conversationId}`);
     router.refresh();
   }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <input className="ig-input" placeholder="Search people…" value={q} onChange={(e) => setQ(e.target.value)} />
-      <p className="text-xs text-gray-500">{picked.size} selected · {spotsLeft} spots left</p>
+      <input className="ig-input" placeholder={t("messages.addMembersForm.searchPlaceholder")} value={q} onChange={(e) => setQ(e.target.value)} />
+      <p className="text-xs text-gray-500">{t("messages.addMembersForm.selectedCount", { count: picked.size, spots: spotsLeft })}</p>
 
       <ul className="max-h-96 divide-y divide-gray-100 overflow-y-auto rounded-2xl border border-gray-200 bg-white">
         {filtered.length === 0 ? (
-          <li className="px-4 py-6 text-center text-sm text-gray-400">No one left to add.</li>
+          <li className="px-4 py-6 text-center text-sm text-gray-400">{t("messages.addMembersForm.noneLeft")}</li>
         ) : filtered.map((u) => (
           <li key={u.id}>
             <button type="button" onClick={() => toggle(u.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50">
@@ -60,7 +62,7 @@ export default function AddMembersForm({ conversationId, users, spotsLeft }) {
       </ul>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <button disabled={busy || spotsLeft === 0} className="ig-btn">{busy ? "Adding…" : "Add to group"}</button>
+      <button disabled={busy || spotsLeft === 0} className="ig-btn">{busy ? t("messages.addMembersForm.adding") : t("messages.addMembersForm.add")}</button>
     </form>
   );
 }

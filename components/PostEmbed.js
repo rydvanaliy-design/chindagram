@@ -1,14 +1,16 @@
 "use client";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // Compact clickable preview of an original post — used when a post is a
 // repost, and when a shared post appears in a story or a DM.
 export default function PostEmbed({ post, className = "" }) {
+  const { t } = useT();
   if (!post || post.unavailable) {
     return (
       <div className={`rounded-xl border border-gray-200 p-4 text-center text-xs text-gray-400 ${className}`}>
-        This post is no longer available.
+        {t("posts.embed.unavailable")}
       </div>
     );
   }
@@ -24,7 +26,7 @@ export default function PostEmbed({ post, className = "" }) {
         media.type === "VIDEO" ? (
           <video src={media.url} className="max-h-72 w-full bg-black object-contain" muted />
         ) : (
-          <img src={media.url} alt="" className="max-h-72 w-full bg-black object-contain" />
+          <img src={media.url} alt={media.alt || ""} className="max-h-72 w-full bg-black object-contain" />
         )
       ) : null}
       {post.linkUrl && <p className="truncate px-3 pb-2 pt-2 text-xs text-brand">{post.linkUrl}</p>}

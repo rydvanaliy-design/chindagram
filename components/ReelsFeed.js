@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import ReactionBar from "@/components/ReactionBar";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 function ReelItem({ reel }) {
   return (
@@ -24,8 +25,9 @@ function ReelItem({ reel }) {
 }
 
 export default function ReelsFeed({ reels }) {
+  const { t } = useT();
   if (reels.length === 0) {
-    return <p className="py-20 text-center text-sm text-gray-400">No reels yet. Post a video to start.</p>;
+    return <p className="py-20 text-center text-sm text-gray-400">{t("discovery.reels.empty")}</p>;
   }
   return (
     <div className="h-[100dvh] snap-y snap-mandatory overflow-y-scroll no-scrollbar">

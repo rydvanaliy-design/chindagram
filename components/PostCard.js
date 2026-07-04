@@ -15,13 +15,14 @@ import CommentComposer from "@/components/CommentComposer";
 import { Comment as CommentIcon, Flag } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
 import { CATEGORY_LABELS } from "@/lib/postkinds";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
-function timeAgo(iso) {
+function timeAgo(iso, t) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60); if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
+  if (s < 60) return t("posts.card.justNow");
+  const m = Math.floor(s / 60); if (m < 60) return `${m}${t("posts.card.minutesSuffix")}`;
+  const h = Math.floor(m / 60); if (h < 24) return `${h}${t("posts.card.hoursSuffix")}`;
+  return `${Math.floor(h / 24)}${t("posts.card.daysSuffix")}`;
 }
 
 function LinkCard({ url }) {
@@ -47,19 +48,21 @@ function AudioCard({ media }) {
 }
 
 function DocCard({ media }) {
+  const { t } = useT();
   return (
     <a href={media.url} target="_blank" rel="noreferrer noopener" download={media.name || true}
       className="mx-4 mb-1 flex items-center gap-3 rounded-xl border border-gray-200 p-3 hover:bg-gray-50">
       <span className="text-2xl">📄</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-gray-900">{media.name || "Document"}</span>
-        <span className="text-xs text-brand">Open / download</span>
+        <span className="block truncate text-sm font-medium text-gray-900">{media.name || t("posts.card.document")}</span>
+        <span className="text-xs text-brand">{t("posts.card.openDocument")}</span>
       </span>
     </a>
   );
 }
 
 export default function PostCard({ post, currentUserId, isAdmin, canManageClub = false }) {
+  const { t } = useT();
   const router = useRouter();
   const [removed, setRemoved] = useState(false);
   const [comments, setComments] = useState(post.comments);
@@ -102,12 +105,12 @@ export default function PostCard({ post, currentUserId, isAdmin, canManageClub =
     }
   }
   async function report(target) {
-    const reason = window.prompt("Tell admins what's wrong (optional):") ?? "";
+    const reason = window.prompt(t("posts.card.reportPrompt")) ?? "";
     const res = await fetch("/api/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...target, reason }) });
-    if (res.ok) window.alert("Thanks — this was flagged for admins.");
+    if (res.ok) window.alert(t("posts.card.reportThanks"));
   }
   async function deletePost() {
-    if (!window.confirm(isOwner ? "Delete this post?" : "Remove this post for everyone?")) return;
+    if (!window.confirm(isOwner ? t("posts.card.confirmDeleteOwn") : t("posts.card.confirmDeleteOther"))) return;
     const res = isOwner
       ? await fetch(`/api/posts/${post.id}`, { method: "DELETE" })
       : await fetch("/api/admin/remove-post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: post.id }) });
@@ -147,30 +150,30 @@ export default function PostCard({ post, currentUserId, isAdmin, canManageClub =
             <ClassBadge gradeClass={post.author.gradeClass} />
           </span>
           <p className="text-xs text-gray-400">
-            {post.kind === "REEL" ? "Reel · " : ""}{timeAgo(post.createdAt)}
-            {pinned && <span className="ml-1 font-semibold text-brand">· 📌 Pinned</span>}
-            {post.pending && <span className="ml-1 font-semibold text-amber-600">· Pending review</span>}
+            {post.kind === "REEL" ? `${t("posts.card.reel")} · ` : ""}{timeAgo(post.createdAt, t)}
+            {pinned && <span className="ml-1 font-semibold text-brand">· 📌 {t("posts.card.pinned")}</span>}
+            {post.pending && <span className="ml-1 font-semibold text-amber-600">· {t("posts.card.pendingReview")}</span>}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-3 text-gray-400">
-          {(isOwner || canManageClub) && <button onClick={togglePin} title={pinned ? "Unpin" : "Pin"} className="text-xs font-semibold text-gray-500 hover:text-brand">{pinned ? "Unpin" : "Pin"}</button>}
-          {!isOwner && <button onClick={() => report({ postId: post.id })} title="Report" className="hover:text-brand"><Flag /></button>}
-          {(isOwner || isAdmin) && <button onClick={deletePost} className="text-xs font-semibold text-red-600 hover:underline">{isOwner ? "Delete" : "Remove"}</button>}
+          {(isOwner || canManageClub) && <button onClick={togglePin} title={pinned ? t("posts.card.unpin") : t("posts.card.pin")} aria-label={pinned ? t("posts.card.unpin") : t("posts.card.pin")} className="text-xs font-semibold text-gray-500 hover:text-brand">{pinned ? t("posts.card.unpin") : t("posts.card.pin")}</button>}
+          {!isOwner && <button onClick={() => report({ postId: post.id })} title={t("posts.card.report")} aria-label={t("posts.card.report")} className="hover:text-brand"><Flag /></button>}
+          {(isOwner || isAdmin) && <button onClick={deletePost} className="text-xs font-semibold text-red-600 hover:underline">{isOwner ? t("posts.card.delete") : t("posts.card.remove")}</button>}
         </div>
       </div>
 
       {post.pending && (
         <p className="mx-4 mb-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          Waiting for a teacher or admin to review. Only you can see this for now.
+          {t("posts.card.pendingNotice")}
         </p>
       )}
 
       {invite && (
         <div className="mx-4 mb-2 flex items-center justify-between gap-2 rounded-lg bg-brand/5 px-3 py-2 text-xs">
-          <span className="text-gray-700">{post.author.name} invited you to co-author this post.</span>
+          <span className="text-gray-700">{t("posts.card.collabInvite", { name: post.author.name })}</span>
           <span className="flex shrink-0 gap-2">
-            <button onClick={() => respondInvite("accept")} className="rounded-md bg-brand px-2 py-1 font-semibold text-white">Accept</button>
-            <button onClick={() => respondInvite("decline")} className="rounded-md border border-gray-300 px-2 py-1 font-semibold text-gray-600">Decline</button>
+            <button onClick={() => respondInvite("accept")} className="rounded-md bg-brand px-2 py-1 font-semibold text-white">{t("posts.card.accept")}</button>
+            <button onClick={() => respondInvite("decline")} className="rounded-md border border-gray-300 px-2 py-1 font-semibold text-gray-600">{t("posts.card.decline")}</button>
           </span>
         </div>
       )}

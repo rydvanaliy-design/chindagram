@@ -2,8 +2,10 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function NewGroupForm({ users }) {
+  const { t } = useT();
   const router = useRouter();
   const [name, setName] = useState("");
   const [q, setQ] = useState("");
@@ -28,14 +30,14 @@ export default function NewGroupForm({ users }) {
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
-    if (picked.size === 0) { setError("Pick at least one other person."); return; }
+    if (picked.size === 0) { setError(t("messages.newGroup.pickAtLeastOne")); return; }
     setBusy(true);
     const res = await fetch("/api/conversations", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ memberIds: [...picked], name }),
     });
     setBusy(false);
-    if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || "Could not create group."); return; }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || t("messages.newGroup.createError")); return; }
     const d = await res.json();
     router.push(`/messages/${d.id}`);
     router.refresh();
@@ -43,13 +45,13 @@ export default function NewGroupForm({ users }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <input className="ig-input" placeholder="Group name (optional)" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
-      <input className="ig-input" placeholder="Search people…" value={q} onChange={(e) => setQ(e.target.value)} />
-      <p className="text-xs text-gray-500">{picked.size} selected (up to 29, plus you)</p>
+      <input className="ig-input" placeholder={t("messages.newGroup.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+      <input className="ig-input" placeholder={t("messages.newGroup.searchPlaceholder")} value={q} onChange={(e) => setQ(e.target.value)} />
+      <p className="text-xs text-gray-500">{t("messages.newGroup.selectedCount", { count: picked.size })}</p>
 
       <ul className="max-h-96 divide-y divide-gray-100 overflow-y-auto rounded-2xl border border-gray-200 bg-white">
         {filtered.length === 0 ? (
-          <li className="px-4 py-6 text-center text-sm text-gray-400">No one found.</li>
+          <li className="px-4 py-6 text-center text-sm text-gray-400">{t("messages.newGroup.noneFound")}</li>
         ) : filtered.map((u) => (
           <li key={u.id}>
             <button type="button" onClick={() => toggle(u.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50">
@@ -64,7 +66,7 @@ export default function NewGroupForm({ users }) {
       </ul>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <button disabled={busy} className="ig-btn">{busy ? "Creating…" : "Create group"}</button>
+      <button disabled={busy} className="ig-btn">{busy ? t("messages.newGroup.creating") : t("messages.newGroup.create")}</button>
     </form>
   );
 }

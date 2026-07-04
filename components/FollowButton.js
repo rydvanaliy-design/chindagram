@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // status: "NONE" | "PENDING" | "ACCEPTED"
 export default function FollowButton({ targetId, initialStatus }) {
   const router = useRouter();
+  const { t } = useT();
   const [status, setStatus] = useState(initialStatus);
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +24,7 @@ export default function FollowButton({ targetId, initialStatus }) {
     }
   }
 
-  const label = status === "ACCEPTED" ? "Following" : status === "PENDING" ? "Requested" : "Follow";
+  const label = status === "ACCEPTED" ? t("profile.follow.following") : status === "PENDING" ? t("profile.follow.requested") : t("profile.follow.follow");
   const soft = status === "ACCEPTED" || status === "PENDING";
 
   return (

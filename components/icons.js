@@ -24,3 +24,4 @@ export function Bell() { return (<svg {...base}><path d="M6 9a6 6 0 0 1 12 0c0 5
 export function MoreHorizontal() { return (<svg {...base} fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>); }
 export function Repost() { return (<svg {...base}><path d="M17 2 21 6l-4 4" /><path d="M3 12V9a3 3 0 0 1 3-3h15" /><path d="M7 22 3 18l4-4" /><path d="M21 12v3a3 3 0 0 1-3 3H3" /></svg>); }
 export function Calendar() { return (<svg {...base}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>); }
+export function Globe() { return (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z" /></svg>); }

@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // Renders a poll: tap an option to vote; shows result bars once you've voted.
 export default function Poll({ postId, poll }) {
+  const { t } = useT();
   const [options, setOptions] = useState(poll.options);
   const [myOptionId, setMyOptionId] = useState(poll.myOptionId);
   const [total, setTotal] = useState(poll.totalVotes);
@@ -52,7 +54,8 @@ export default function Poll({ postId, poll }) {
         );
       })}
       <p className="text-xs text-gray-400">
-        {total} {total === 1 ? "vote" : "votes"}{voted ? "" : " · tap to vote"}
+        {total === 1 ? t("posts.poll.vote") : t("posts.poll.votes", { count: total })}
+        {voted ? "" : ` · ${t("posts.poll.tapToVote")}`}
       </p>
     </div>
   );

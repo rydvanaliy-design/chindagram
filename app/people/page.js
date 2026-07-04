@@ -8,21 +8,30 @@ import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
 import FollowButton from "@/components/FollowButton";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 
 export const dynamic = "force-dynamic";
 
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "myclass", label: "My Class" },
-  { key: "myclubs", label: "My Clubs" },
-  { key: "teachers", label: "Teachers" },
-];
+function filterLabels(t) {
+  return {
+    all: t("discovery.people.filters.all"),
+    myclass: t("discovery.people.filters.myClass"),
+    myclubs: t("discovery.people.filters.myClubs"),
+    teachers: t("discovery.people.filters.teachers"),
+  };
+}
+
+const FILTER_KEYS = ["all", "myclass", "myclubs", "teachers"];
 
 export default async function PeoplePage({ searchParams }) {
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
+  const locale = await getLocale();
+  const t = makeT(locale);
+  const labels = filterLabels(t);
   const me = viewer.id;
-  const filter = FILTERS.some((f) => f.key === searchParams?.filter) ? searchParams.filter : "all";
+  const filter = FILTER_KEYS.includes(searchParams?.filter) ? searchParams.filter : "all";
 
   const blockedIds = await blockedIdsFor(me);
   const meUser = await prisma.user.findUnique({ where: { id: me }, select: { gradeClass: true } });
@@ -62,11 +71,11 @@ export default async function PeoplePage({ searchParams }) {
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
-        <h1 className="mb-4 text-lg font-semibold">People</h1>
+        <h1 className="mb-4 text-lg font-semibold">{t("discovery.people.title")}</h1>
 
         {suggestions.length > 0 && (
           <section className="mb-6">
-            <h2 className="mb-2 text-sm font-semibold text-gray-500">People you may know</h2>
+            <h2 className="mb-2 text-sm font-semibold text-gray-500">{t("discovery.people.suggestions")}</h2>
             <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
               {suggestions.map((u) => (
                 <li key={u.id} className="flex items-center gap-3 px-4 py-3">
@@ -83,19 +92,19 @@ export default async function PeoplePage({ searchParams }) {
         )}
 
         <nav className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
-          {FILTERS.map((f) => (
+          {FILTER_KEYS.map((key) => (
             <Link
-              key={f.key} href={f.key === "all" ? "/people" : `/people?filter=${f.key}`}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${filter === f.key ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}
+              key={key} href={key === "all" ? "/people" : `/people?filter=${key}`}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${filter === key ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}
             >
-              {f.label}
+              {labels[key]}
             </Link>
           ))}
         </nav>
 
         {users.length === 0 ? (
           <p className="py-12 text-center text-sm text-gray-400">
-            {filter === "myclass" ? "No classmates found." : filter === "myclubs" ? "No clubmates yet — join a club first." : filter === "teachers" ? "No teachers or admins yet." : "No one else here yet."}
+            {filter === "myclass" ? t("discovery.people.emptyClass") : filter === "myclubs" ? t("discovery.people.emptyClubs") : filter === "teachers" ? t("discovery.people.emptyTeachers") : t("discovery.people.emptyAll")}
           </p>
         ) : (
           <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">

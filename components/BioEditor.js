@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function BioEditor({ initialBio }) {
   const router = useRouter();
+  const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState(initialBio || "");
   const [busy, setBusy] = useState(false);
@@ -26,10 +28,10 @@ export default function BioEditor({ initialBio }) {
     return (
       <div className="flex items-start gap-2">
         <p className="flex-1 whitespace-pre-wrap text-sm text-gray-700">
-          {bio ? bio : <span className="text-gray-400">No bio yet.</span>}
+          {bio ? bio : <span className="text-gray-400">{t("profile.bio.empty")}</span>}
         </p>
         <button onClick={() => setEditing(true)} className="text-xs font-semibold text-brand hover:underline">
-          Edit
+          {t("profile.bio.edit")}
         </button>
       </div>
     );
@@ -42,15 +44,15 @@ export default function BioEditor({ initialBio }) {
         onChange={(e) => setBio(e.target.value)}
         rows={3}
         maxLength={300}
-        placeholder="Write a short bio…"
+        placeholder={t("profile.bio.placeholder")}
         className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand"
       />
       <div className="flex gap-2">
         <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60">
-          {busy ? "Saving…" : "Save"}
+          {busy ? t("common.actions.saving") : t("common.actions.save")}
         </button>
         <button onClick={() => { setEditing(false); setBio(initialBio || ""); }} className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-semibold text-gray-700">
-          Cancel
+          {t("common.actions.cancel")}
         </button>
       </div>
     </div>

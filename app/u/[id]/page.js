@@ -14,9 +14,11 @@ import Wall from "@/components/Wall";
 import ProfileMoreMenu from "@/components/ProfileMoreMenu";
 import { themeOf } from "@/lib/themes";
 import { canModerateContent, isAdmin, isStaff } from "@/lib/roles";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 
-function joinedLabel(d) {
-  return new Date(d).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+function joinedLabel(d, locale) {
+  return new Date(d).toLocaleDateString(locale === "th" ? "th-TH" : undefined, { month: "long", year: "numeric" });
 }
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,8 @@ export default async function ProfilePage({ params }) {
   if (!viewer) redirect("/login");
   const me = viewer.id;
   const admin = isAdmin(viewer.role);
+  const locale = await getLocale();
+  const t = makeT(locale);
 
   // Accept either a user id or a @username in the URL.
   const user = await prisma.user.findFirst({
@@ -122,19 +126,19 @@ export default async function ProfilePage({ params }) {
               {user.pronouns && <span className="text-sm text-gray-400">{user.pronouns}</span>}
               {isSelf ? (
                 <div className="flex items-center gap-2">
-                  <Link href="/settings/profile" className="ig-btn-soft py-1.5">Edit profile</Link>
-                  <Link href="/settings" className="ig-btn-soft py-1.5">Settings</Link>
+                  <Link href="/settings/profile" className="ig-btn-soft py-1.5">{t("profile.actions.editProfile")}</Link>
+                  <Link href="/settings" className="ig-btn-soft py-1.5">{t("profile.actions.settings")}</Link>
                 </div>
               ) : iBlockedThem ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-red-600">You blocked this account</span>
+                  <span className="text-sm font-semibold text-red-600">{t("profile.blocked.notice")}</span>
                   <ProfileMoreMenu targetId={user.id} initialBlocked={true} initialMuted={false} initialCloseFriend={false} />
                 </div>
               ) : showActions && (
                 <div className="flex items-center gap-2">
                   <FollowButton targetId={user.id} initialStatus={followStatus} />
                   <FriendButton targetId={user.id} initialStatus={friendStatus} />
-                  <Link href={`/messages/start/${user.id}`} className="ig-btn-soft py-1.5">Message</Link>
+                  <Link href={`/messages/start/${user.id}`} className="ig-btn-soft py-1.5">{t("profile.actions.message")}</Link>
                   <ProfileMoreMenu targetId={user.id} initialBlocked={false} initialMuted={Boolean(muteRow)} initialCloseFriend={Boolean(closeFriendRow)} />
                 </div>
               )}
@@ -147,16 +151,16 @@ export default async function ProfilePage({ params }) {
               </div>
             )}
             <div className="mt-2 flex gap-6 text-sm">
-              <span><b>{posts.length}</b> {posts.length === 1 ? "post" : "posts"}</span>
-              <span><b>{followerCount}</b> followers</span>
-              <span><b>{followingCount}</b> following</span>
+              <span><b>{posts.length}</b> {posts.length === 1 ? t("profile.stats.post") : t("profile.stats.posts")}</span>
+              <span><b>{followerCount}</b> {t("profile.stats.followers")}</span>
+              <span><b>{followingCount}</b> {t("profile.stats.following")}</span>
             </div>
           </div>
         </header>
 
         <section className="mt-4">
           {isSelf ? <BioEditor initialBio={user.bio} /> : (
-            <p className="whitespace-pre-wrap text-sm text-gray-700">{user.bio || <span className="text-gray-400">No bio yet.</span>}</p>
+            <p className="whitespace-pre-wrap text-sm text-gray-700">{user.bio || <span className="text-gray-400">{t("profile.bio.empty")}</span>}</p>
           )}
 
           {user.interests && (
@@ -180,31 +184,37 @@ export default async function ProfilePage({ params }) {
             </ul>
           )}
 
-          <p className="mt-3 text-xs text-gray-400">Joined {joinedLabel(user.createdAt)}</p>
+          <p className="mt-3 text-xs text-gray-400">{t("profile.joined", { date: joinedLabel(user.createdAt, locale) })}</p>
         </section>
 
         {!canViewContent ? (
           <section className="mt-10 flex flex-col items-center py-10 text-center">
             <span className="mb-3 grid h-14 w-14 place-items-center rounded-full border-2 border-gray-300 text-gray-400"><Lock /></span>
-            <p className="font-semibold">This account is private</p>
+            <p className="font-semibold">{t("profile.private.title")}</p>
             <p className="mt-1 max-w-xs text-sm text-gray-500">
               {followStatus === "PENDING"
-                ? "Your follow request is waiting for approval."
-                : "Follow this account to see their posts and wall."}
+                ? t("profile.private.pending")
+                : t("profile.private.prompt")}
             </p>
           </section>
         ) : (
           <>
             <section className="mt-6">
               {posts.length === 0 ? (
-                <p className="py-12 text-center text-sm text-gray-400">No posts yet.</p>
+                <p className="py-12 text-center text-sm text-gray-400">{t("profile.posts.empty")}</p>
               ) : (
                 <div className="grid grid-cols-3 gap-1 sm:gap-2">
                   {posts.map((p) => {
                     const thumb = p.media[0] || p.repostOf?.media[0];
                     const isPhotoVideo = thumb && (thumb.type === "IMAGE" || thumb.type === "VIDEO");
                     const isVideo = p.kind === "REEL" || thumb?.type === "VIDEO";
-                    const tileLabel = { LINK: "Link", POLL: "Poll", AUDIO: "Audio", DOCUMENT: "File", REPOST: "Repost" }[p.kind] || "Text";
+                    const tileLabel = {
+                      LINK: t("profile.posts.tile.link"),
+                      POLL: t("profile.posts.tile.poll"),
+                      AUDIO: t("profile.posts.tile.audio"),
+                      DOCUMENT: t("profile.posts.tile.document"),
+                      REPOST: t("profile.posts.tile.repost"),
+                    }[p.kind] || t("profile.posts.tile.text");
                     return (
                       <Link key={p.id} href={`/p/${p.id}`} className="relative aspect-square overflow-hidden rounded-md bg-gray-100">
                         {isPhotoVideo ? (
@@ -220,7 +230,7 @@ export default async function ProfilePage({ params }) {
                         )}
                         {p.pinned && <span className="absolute left-1 top-1 text-xs drop-shadow">📌</span>}
                         {p.status === "PENDING" && (
-                          <span className="absolute inset-x-0 bottom-0 bg-amber-500/90 px-1 py-0.5 text-center text-[10px] font-bold text-white">Pending review</span>
+                          <span className="absolute inset-x-0 bottom-0 bg-amber-500/90 px-1 py-0.5 text-center text-[10px] font-bold text-white">{t("profile.posts.pendingReview")}</span>
                         )}
                         {isVideo && <span className="absolute right-1 top-1 text-white drop-shadow"><Reel /></span>}
                         {isPhotoVideo && !isVideo && p._count.media > 1 && (
@@ -234,7 +244,7 @@ export default async function ProfilePage({ params }) {
             </section>
 
             <section className="mt-8">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Wall</h2>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{t("profile.wall.title")}</h2>
               <Wall
                 ownerId={user.id}
                 ownerName={user.name}

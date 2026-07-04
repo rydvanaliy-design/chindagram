@@ -1,12 +1,14 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { REACTIONS, REACTION_EMOJI, DEFAULT_REACTION } from "@/lib/reactions";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const HOLD_MS = 350;
 
 // Same tap-vs-hold pattern as ReactionBar (posts): quick tap toggles the
 // default reaction (or clears yours), press-and-hold opens the full picker.
 export default function MessageReactionButton({ myReaction, onReact }) {
+  const { t } = useT();
   const [picking, setPicking] = useState(false);
   const timerRef = useRef(null);
   const heldRef = useRef(false);
@@ -21,13 +23,25 @@ export default function MessageReactionButton({ myReaction, onReact }) {
     if (!heldRef.current) quickToggle();
   }
   function onPointerLeave() { clearTimeout(timerRef.current); }
+  // Press-and-hold is a touch/mouse-only affordance — keyboard users get the
+  // quick toggle via Enter/Space instead (same as a plain button click).
+  function onKeyDown(e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); quickToggle(); }
+  }
   function pick(type) { setPicking(false); onReact(type); }
+
+  useEffect(() => {
+    if (!picking) return;
+    function onEsc(e) { if (e.key === "Escape") setPicking(false); }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [picking]);
 
   return (
     <div className="relative">
       <button
-        onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerLeave={onPointerLeave}
-        aria-label="React" className="text-[13px] leading-none opacity-0 transition group-hover:opacity-100 active:scale-90"
+        onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerLeave={onPointerLeave} onKeyDown={onKeyDown}
+        aria-label={t("messages.thread.react")} className="text-[13px] leading-none opacity-0 transition focus:opacity-100 group-hover:opacity-100 active:scale-90"
       >
         {myReaction ? REACTION_EMOJI[myReaction] : "🤍"}
       </button>

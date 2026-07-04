@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // Renders a post's media: single image, swipeable multi-image carousel, or video.
 export default function PostMedia({ media }) {
+  const { t } = useT();
   const [i, setI] = useState(0);
   if (!media || media.length === 0) return null;
 
@@ -15,19 +17,19 @@ export default function PostMedia({ media }) {
       {isVideo ? (
         <video src={current.url} controls playsInline loop className="mx-auto max-h-[72vh] w-full bg-black" />
       ) : (
-        <img src={current.url} alt="" className="mx-auto max-h-[72vh] w-full bg-black object-contain" />
+        <img src={current.url} alt={current.alt || ""} className="mx-auto max-h-[72vh] w-full bg-black object-contain" />
       )}
 
       {media.length > 1 && (
         <>
           {i > 0 && (
-            <button onClick={() => setI(i - 1)} aria-label="Previous"
+            <button onClick={() => setI(i - 1)} aria-label={t("posts.media.previous")}
               className="absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-gray-800 shadow">
               <ChevronLeft />
             </button>
           )}
           {i < media.length - 1 && (
-            <button onClick={() => setI(i + 1)} aria-label="Next"
+            <button onClick={() => setI(i + 1)} aria-label={t("posts.media.next")}
               className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-gray-800 shadow">
               <ChevronRight />
             </button>

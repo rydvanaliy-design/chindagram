@@ -11,20 +11,24 @@ import BottomNav from "@/components/BottomNav";
 import PostCard from "@/components/PostCard";
 import StoriesBar from "@/components/StoriesBar";
 import FeedTabs from "@/components/FeedTabs";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 
 export const dynamic = "force-dynamic";
 
 const TABS = ["following", "foryou", "myclass", "clubs", "announcements"];
 
-const EMPTY_COPY = {
-  following: { title: "Your feed is quiet.", body: "Follow classmates or share your first post." },
-  foryou: { title: "Nothing to show yet.", body: "As people post, the liveliest stuff will show up here." },
-  myclass: { title: "No class posts yet.", body: "Once classmates post, you'll see them here." },
-  clubs: { title: "No club posts yet.", body: "Join a club to see posts from other members." },
-  announcements: { title: "No announcements yet.", body: "School news and updates from teachers and admins will appear here." },
-};
-
 export default async function FeedPage({ searchParams }) {
+  const locale = await getLocale();
+  const t = makeT(locale);
+  const EMPTY_COPY = {
+    following: { title: t("posts.feed.empty.following.title"), body: t("posts.feed.empty.following.body") },
+    foryou: { title: t("posts.feed.empty.foryou.title"), body: t("posts.feed.empty.foryou.body") },
+    myclass: { title: t("posts.feed.empty.myclass.title"), body: t("posts.feed.empty.myclass.body") },
+    clubs: { title: t("posts.feed.empty.clubs.title"), body: t("posts.feed.empty.clubs.body") },
+    announcements: { title: t("posts.feed.empty.announcements.title"), body: t("posts.feed.empty.announcements.body") },
+  };
+
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
   const me = viewer.id;
@@ -62,7 +66,7 @@ export default async function FeedPage({ searchParams }) {
     const repostOf = s.repostOf ? {
       id: s.repostOf.id, kind: s.repostOf.kind, caption: s.repostOf.caption, linkUrl: s.repostOf.linkUrl,
       createdAt: s.repostOf.createdAt.toISOString(), author: s.repostOf.author,
-      media: s.repostOf.media.map((m) => ({ url: m.url, type: m.type, name: m.name })),
+      media: s.repostOf.media.map((m) => ({ url: m.url, type: m.type, name: m.name, alt: m.alt })),
       unavailable: s.repostOf.removed || (s.repostOf.status !== "VISIBLE" && s.repostOf.author.id !== me),
     } : (s.repostOfId ? { unavailable: true } : null);
     storyMap.get(s.authorId).stories.push({ id: s.id, imageUrl: s.imageUrl, repostOf });
@@ -124,8 +128,8 @@ export default async function FeedPage({ searchParams }) {
 
   const empty = noGroup
     ? tab === "myclass"
-      ? { title: "No class assigned yet.", body: "Ask an admin to add you to a class." }
-      : { title: "You haven't joined any clubs.", body: "Browse clubs and join one to see posts here." }
+      ? { title: t("posts.feed.empty.noClass.title"), body: t("posts.feed.empty.noClass.body") }
+      : { title: t("posts.feed.empty.noClubs.title"), body: t("posts.feed.empty.noClubs.body") }
     : EMPTY_COPY[tab];
 
   return (
@@ -140,11 +144,11 @@ export default async function FeedPage({ searchParams }) {
             <p className="mb-4 text-sm">{empty.body}</p>
             <div className="flex justify-center gap-3">
               {tab === "clubs" ? (
-                <Link href="/clubs" className="ig-btn-soft">Browse clubs</Link>
+                <Link href="/clubs" className="ig-btn-soft">{t("posts.feed.empty.browseClubs")}</Link>
               ) : (
-                <Link href="/explore" className="ig-btn-soft">Find people</Link>
+                <Link href="/explore" className="ig-btn-soft">{t("posts.feed.empty.findPeople")}</Link>
               )}
-              <Link href="/new" className="ig-btn">New post</Link>
+              <Link href="/new" className="ig-btn">{t("posts.feed.empty.newPost")}</Link>
             </div>
           </div>
         ) : (

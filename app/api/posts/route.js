@@ -22,6 +22,15 @@ export async function POST(req) {
     const collaborator = String(form.get("collaborator") || "").trim().toLowerCase().replace(/^@/, "");
     let kind = String(form.get("kind") || "").trim().toUpperCase();
     const files = form.getAll("media").filter((f) => f && typeof f !== "string");
+    // Optional per-image alt text, sent as a JSON array parallel to the photo files.
+    let altTexts = [];
+    try {
+      const raw = form.get("altTexts");
+      if (raw) altTexts = JSON.parse(String(raw));
+      if (!Array.isArray(altTexts)) altTexts = [];
+    } catch {
+      altTexts = [];
+    }
 
     // School categories (announcements, etc.) are Teacher/Admin only.
     let category = String(form.get("category") || "NONE").trim().toUpperCase();
@@ -83,7 +92,8 @@ export async function POST(req) {
       const media = [];
       for (let i = 0; i < toSave.length; i++) {
         const saved = await saveMedia(toSave[i]);
-        media.push({ url: saved.url, type: saved.type, order: i });
+        const alt = !isVideo && typeof altTexts[i] === "string" ? altTexts[i].trim().slice(0, 500) : "";
+        media.push({ url: saved.url, type: saved.type, order: i, alt: alt || null });
       }
       data.media = { create: media };
     }

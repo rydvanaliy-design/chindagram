@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/guards";
 import { canModerateContent } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import { ReviewActions } from "@/components/ReviewActions";
@@ -21,6 +23,8 @@ export default async function ReviewPage() {
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
   if (!canModerateContent(viewer.role)) redirect("/");
+  const locale = await getLocale();
+  const t = makeT(locale);
 
   // Held for review (auto-flagged or school-wide approval).
   const heldPosts = await prisma.post.findMany({
@@ -57,21 +61,21 @@ export default async function ReviewPage() {
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
-        <h1 className="mb-1 text-lg font-semibold">Review</h1>
+        <h1 className="mb-1 text-lg font-semibold">{t("review.title")}</h1>
         <p className="mb-6 text-sm text-gray-500">
-          Approve or remove flagged posts and comments. {viewer.role === "ADMIN" && (
-            <Link href="/admin" className="text-brand hover:underline">Admin tools →</Link>
+          {t("review.intro")} {viewer.role === "ADMIN" && (
+            <Link href="/admin" className="text-brand hover:underline">{t("review.adminTools")}</Link>
           )}
         </p>
 
         {/* Held for review */}
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Held for review ({heldCount})
+            {t("review.held.heading", { count: heldCount })}
           </h2>
           {heldCount === 0 ? (
             <p className="rounded-xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
-              Nothing waiting. 🎉
+              {t("review.held.empty")}
             </p>
           ) : (
             <ul className="space-y-3">
@@ -80,8 +84,8 @@ export default async function ReviewPage() {
                   <div className="flex items-center gap-3">
                     <PostThumb media={p.media} />
                     <div className="min-w-0 flex-1 text-sm">
-                      <p className="font-semibold">Post by {p.author.name}</p>
-                      <p className="line-clamp-2 text-gray-600">{p.caption || <span className="text-gray-400">No caption</span>}</p>
+                      <p className="font-semibold">{t("review.item.postBy", { name: p.author.name })}</p>
+                      <p className="line-clamp-2 text-gray-600">{p.caption || <span className="text-gray-400">{t("review.item.noCaption")}</span>}</p>
                       {p.flagReason && <p className="mt-1 text-xs text-amber-600">{p.flagReason}</p>}
                     </div>
                     <ReviewActions type="post" id={p.id} />
@@ -92,7 +96,7 @@ export default async function ReviewPage() {
                 <li key={c.id} className="rounded-xl border border-amber-200 bg-white p-4">
                   <div className="flex items-center gap-3">
                     <div className="min-w-0 flex-1 text-sm">
-                      <p className="font-semibold">Comment by {c.author.name}</p>
+                      <p className="font-semibold">{t("review.item.commentBy", { name: c.author.name })}</p>
                       <p className="text-gray-600">{c.body}</p>
                       {c.flagReason && <p className="mt-1 text-xs text-amber-600">{c.flagReason}</p>}
                     </div>
@@ -104,7 +108,7 @@ export default async function ReviewPage() {
                 <li key={w.id} className="rounded-xl border border-amber-200 bg-white p-4">
                   <div className="flex items-center gap-3">
                     <div className="min-w-0 flex-1 text-sm">
-                      <p className="font-semibold">Wall post by {w.author.name} <span className="font-normal text-gray-400">on {w.owner.name}’s wall</span></p>
+                      <p className="font-semibold">{t("review.item.wallPostBy", { name: w.author.name })} <span className="font-normal text-gray-400">{t("review.item.onWall", { name: w.owner.name })}</span></p>
                       <p className="text-gray-600">{w.body}</p>
                       {w.flagReason && <p className="mt-1 text-xs text-amber-600">{w.flagReason}</p>}
                     </div>
@@ -119,50 +123,52 @@ export default async function ReviewPage() {
         {/* Reported */}
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Reported ({reports.length})
+            {t("review.reported.heading", { count: reports.length })}
           </h2>
           {reports.length === 0 ? (
             <p className="rounded-xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
-              Nothing reported.
+              {t("review.reported.empty")}
             </p>
           ) : (
             <ul className="space-y-3">
               {reports.map((r) => (
                 <li key={r.id} className="rounded-xl border border-gray-200 bg-white p-4">
                   <p className="mb-2 text-xs text-gray-400">
-                    Reported by {r.reporter.name}{r.reason ? ` — “${r.reason}”` : ""}
+                    {r.reason
+                      ? t("review.reported.byWithReason", { name: r.reporter.name, reason: r.reason })
+                      : t("review.reported.by", { name: r.reporter.name })}
                   </p>
                   {r.post && (
                     <div className="flex items-center gap-3">
                       <PostThumb media={r.post.media} />
                       <div className="min-w-0 flex-1 text-sm">
-                        <p className="font-semibold">Post by {r.post.author.name}</p>
-                        <p className="line-clamp-2 text-gray-600">{r.post.caption || <span className="text-gray-400">No caption</span>}</p>
+                        <p className="font-semibold">{t("review.item.postBy", { name: r.post.author.name })}</p>
+                        <p className="line-clamp-2 text-gray-600">{r.post.caption || <span className="text-gray-400">{t("review.item.noCaption")}</span>}</p>
                       </div>
                       {r.post.removed
-                        ? <span className="text-xs font-semibold text-gray-400">Removed</span>
+                        ? <span className="text-xs font-semibold text-gray-400">{t("review.reported.removed")}</span>
                         : <ReviewActions type="post" id={r.post.id} />}
                     </div>
                   )}
                   {r.comment && (
                     <div className="flex items-center gap-3">
                       <div className="min-w-0 flex-1 text-sm">
-                        <p className="font-semibold">Comment by {r.comment.author.name}</p>
+                        <p className="font-semibold">{t("review.item.commentBy", { name: r.comment.author.name })}</p>
                         <p className="text-gray-600">{r.comment.body}</p>
                       </div>
                       {r.comment.removed
-                        ? <span className="text-xs font-semibold text-gray-400">Removed</span>
+                        ? <span className="text-xs font-semibold text-gray-400">{t("review.reported.removed")}</span>
                         : <ReviewActions type="comment" id={r.comment.id} />}
                     </div>
                   )}
                   {r.wallPost && (
                     <div className="flex items-center gap-3">
                       <div className="min-w-0 flex-1 text-sm">
-                        <p className="font-semibold">Wall post by {r.wallPost.author.name} <span className="font-normal text-gray-400">on {r.wallPost.owner.name}’s wall</span></p>
+                        <p className="font-semibold">{t("review.item.wallPostBy", { name: r.wallPost.author.name })} <span className="font-normal text-gray-400">{t("review.item.onWall", { name: r.wallPost.owner.name })}</span></p>
                         <p className="text-gray-600">{r.wallPost.body}</p>
                       </div>
                       {r.wallPost.removed
-                        ? <span className="text-xs font-semibold text-gray-400">Removed</span>
+                        ? <span className="text-xs font-semibold text-gray-400">{t("review.reported.removed")}</span>
                         : <ReviewActions type="wallpost" id={r.wallPost.id} />}
                     </div>
                   )}

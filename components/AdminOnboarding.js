@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ROLES, ROLE_LABELS } from "@/lib/roles";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
-function useApi() {
+function useApi(errorMessage) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function call(url, body) {
@@ -19,7 +20,7 @@ function useApi() {
       return true;
     }
     const data = await res.json().catch(() => ({}));
-    window.alert(data.error || "Action failed.");
+    window.alert(data.error || errorMessage);
     return false;
   }
   return { busy, call };
@@ -27,7 +28,8 @@ function useApi() {
 
 // School-wide "hold every post & comment for review" switch.
 export function ApprovalToggle({ enabled }) {
-  const { busy, call } = useApi();
+  const { t } = useT();
+  const { busy, call } = useApi(t("admin.actions.actionFailed"));
   return (
     <button
       onClick={() => call("/api/admin/settings", { requireApproval: !enabled })}
@@ -38,19 +40,20 @@ export function ApprovalToggle({ enabled }) {
           : "rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-60"
       }
     >
-      {enabled ? "On — turn off" : "Off — turn on"}
+      {enabled ? t("admin.moderation.on") : t("admin.moderation.off")}
     </button>
   );
 }
 
 // Per-account role dropdown.
 export function RoleSelect({ userId, role, isSelf }) {
-  const { busy, call } = useApi();
+  const { t } = useT();
+  const { busy, call } = useApi(t("admin.actions.actionFailed"));
   return (
     <select
       value={role}
       disabled={busy || isSelf}
-      title={isSelf ? "You can't change your own role" : "Change role"}
+      title={isSelf ? t("admin.accounts.roleSelfTitle") : t("admin.accounts.roleChangeTitle")}
       onChange={(e) => call("/api/admin/set-role", { userId, role: e.target.value })}
       className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-semibold disabled:opacity-60"
     >
@@ -63,7 +66,8 @@ export function RoleSelect({ userId, role, isSelf }) {
 
 // Per-account grade/class label editor.
 export function GradeClassEditor({ userId, gradeClass }) {
-  const { busy, call } = useApi();
+  const { t } = useT();
+  const { busy, call } = useApi(t("admin.actions.actionFailed"));
   const [value, setValue] = useState(gradeClass || "");
   const dirty = value.trim() !== (gradeClass || "");
   return (
@@ -71,7 +75,7 @@ export function GradeClassEditor({ userId, gradeClass }) {
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Class 6B"
+        placeholder={t("admin.accounts.gradeClassPlaceholder")}
         maxLength={40}
         className="w-24 rounded-md border border-gray-300 px-2 py-1 text-xs"
       />
@@ -80,7 +84,7 @@ export function GradeClassEditor({ userId, gradeClass }) {
         disabled={busy || !dirty}
         className="rounded-md border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 disabled:opacity-40"
       >
-        Save
+        {t("common.actions.save")}
       </button>
     </div>
   );
@@ -88,16 +92,17 @@ export function GradeClassEditor({ userId, gradeClass }) {
 
 // Link a parent account to its child (Student) accounts, and unlink.
 export function ParentLinker({ parentId, students, children }) {
-  const { busy, call } = useApi();
+  const { t } = useT();
+  const { busy, call } = useApi(t("admin.actions.actionFailed"));
   const [childId, setChildId] = useState("");
   const linkedIds = new Set(children.map((c) => c.id));
   const options = students.filter((s) => s.id !== parentId && !linkedIds.has(s.id));
 
   return (
     <div className="mt-2 rounded-lg bg-gray-50 p-3">
-      <p className="mb-2 text-xs font-semibold text-gray-500">Linked children</p>
+      <p className="mb-2 text-xs font-semibold text-gray-500">{t("admin.accounts.linkedChildren")}</p>
       {children.length === 0 ? (
-        <p className="mb-2 text-xs text-gray-400">No children linked yet.</p>
+        <p className="mb-2 text-xs text-gray-400">{t("admin.accounts.noChildrenLinked")}</p>
       ) : (
         <ul className="mb-2 space-y-1">
           {children.map((c) => (
@@ -108,7 +113,7 @@ export function ParentLinker({ parentId, students, children }) {
                 disabled={busy}
                 className="font-semibold text-red-600 disabled:opacity-50"
               >
-                Unlink
+                {t("admin.accounts.unlink")}
               </button>
             </li>
           ))}
@@ -120,7 +125,7 @@ export function ParentLinker({ parentId, students, children }) {
           onChange={(e) => setChildId(e.target.value)}
           className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs"
         >
-          <option value="">Add a student…</option>
+          <option value="">{t("admin.accounts.addStudentPlaceholder")}</option>
           {options.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
@@ -130,7 +135,7 @@ export function ParentLinker({ parentId, students, children }) {
           disabled={busy || !childId}
           className="rounded-md bg-brand px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
         >
-          Link
+          {t("admin.accounts.link")}
         </button>
       </div>
     </div>

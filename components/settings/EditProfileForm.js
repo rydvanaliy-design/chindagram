@@ -3,9 +3,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { THEMES, THEME_KEYS } from "@/lib/themes";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function EditProfileForm({ user }) {
   const router = useRouter();
+  const { t } = useT();
   const [name, setName] = useState(user.name || "");
   const [username, setUsername] = useState(user.username || "");
   const [bio, setBio] = useState(user.bio || "");
@@ -39,8 +41,8 @@ export default function EditProfileForm({ user }) {
     if (avatarFile) form.append("avatar", avatarFile);
     const res = await fetch("/api/settings/profile", { method: "POST", body: form });
     setSaving(false);
-    if (res.ok) { setMsg("Saved."); router.refresh(); }
-    else { const d = await res.json().catch(() => ({})); setMsg(d.error || "Could not save."); }
+    if (res.ok) { setMsg(t("settings.editProfile.saved")); router.refresh(); }
+    else { const d = await res.json().catch(() => ({})); setMsg(d.error || t("settings.editProfile.saveError")); }
   }
 
   return (
@@ -48,26 +50,26 @@ export default function EditProfileForm({ user }) {
       <div className="mb-5 flex flex-col items-center">
         <Avatar name={name} image={avatarPreview} size={80} />
         <label className="mt-2 cursor-pointer text-sm font-semibold text-brand">
-          Change profile photo
+          {t("settings.editProfile.changePhoto")}
           <input type="file" accept="image/*" onChange={pickAvatar} className="hidden" />
         </label>
       </div>
-      <label className="mb-1 block text-xs font-medium text-gray-500">Name</label>
+      <label className="mb-1 block text-xs font-medium text-gray-500">{t("settings.editProfile.nameLabel")}</label>
       <input value={name} onChange={(e) => setName(e.target.value)} className="ig-input mb-3" />
-      <label className="mb-1 block text-xs font-medium text-gray-500">Username</label>
+      <label className="mb-1 block text-xs font-medium text-gray-500">{t("settings.editProfile.usernameLabel")}</label>
       <div className="mb-3 flex items-center gap-1">
         <span className="text-gray-400">@</span>
-        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="ig-input" />
+        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("settings.editProfile.usernamePlaceholder")} className="ig-input" />
       </div>
-      <label className="mb-1 block text-xs font-medium text-gray-500">Pronouns</label>
-      <input value={pronouns} onChange={(e) => setPronouns(e.target.value)} placeholder="she/her, he/him, they/them…" maxLength={40} className="ig-input mb-3" />
-      <label className="mb-1 block text-xs font-medium text-gray-500">Bio</label>
+      <label className="mb-1 block text-xs font-medium text-gray-500">{t("settings.editProfile.pronounsLabel")}</label>
+      <input value={pronouns} onChange={(e) => setPronouns(e.target.value)} placeholder={t("settings.editProfile.pronounsPlaceholder")} maxLength={40} className="ig-input mb-3" />
+      <label className="mb-1 block text-xs font-medium text-gray-500">{t("settings.editProfile.bioLabel")}</label>
       <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={300} className="ig-input mb-3 resize-none" />
-      <label className="mb-1 block text-xs font-medium text-gray-500">Interests <span className="text-gray-400">(comma-separated)</span></label>
-      <input value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="art, football, coding" maxLength={200} className="ig-input mb-3" />
-      <label className="mb-1 block text-xs font-medium text-gray-500">Links <span className="text-gray-400">(one per line)</span></label>
-      <textarea value={links} onChange={(e) => setLinks(e.target.value)} rows={2} placeholder="https://…" maxLength={500} className="ig-input mb-3 resize-none" />
-      <label className="mb-1 block text-xs font-medium text-gray-500">Profile theme</label>
+      <label className="mb-1 block text-xs font-medium text-gray-500">{t("settings.editProfile.interestsLabel")} <span className="text-gray-400">{t("settings.editProfile.interestsHint")}</span></label>
+      <input value={interests} onChange={(e) => setInterests(e.target.value)} placeholder={t("settings.editProfile.interestsPlaceholder")} maxLength={200} className="ig-input mb-3" />
+      <label className="mb-1 block text-xs font-medium text-gray-500">{t("settings.editProfile.linksLabel")} <span className="text-gray-400">{t("settings.editProfile.linksHint")}</span></label>
+      <textarea value={links} onChange={(e) => setLinks(e.target.value)} rows={2} placeholder={t("settings.editProfile.linksPlaceholder")} maxLength={500} className="ig-input mb-3 resize-none" />
+      <label className="mb-1 block text-xs font-medium text-gray-500">{t("settings.editProfile.themeLabel")}</label>
       <div className="mb-4 flex flex-wrap gap-2">
         {THEME_KEYS.map((k) => (
           <button type="button" key={k} onClick={() => setTheme(k)}
@@ -76,7 +78,7 @@ export default function EditProfileForm({ user }) {
         ))}
       </div>
       <div className="flex items-center gap-3">
-        <button disabled={saving} className="ig-btn">{saving ? "Saving…" : "Save"}</button>
+        <button disabled={saving} className="ig-btn">{saving ? t("common.actions.saving") : t("common.actions.save")}</button>
         {msg && <span className="text-sm text-gray-500">{msg}</span>}
       </div>
     </form>

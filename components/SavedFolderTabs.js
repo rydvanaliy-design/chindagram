@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 
-export default function SavedFolderTabs({ collections, active, allCount, noneCount }) {
+export default async function SavedFolderTabs({ collections, active, allCount, noneCount }) {
+  const locale = await getLocale();
+  const t = makeT(locale);
   return (
     <nav className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3">
       <Link
@@ -9,7 +13,7 @@ export default function SavedFolderTabs({ collections, active, allCount, noneCou
           active === "all" ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600 hover:border-gray-300"
         }`}
       >
-        All Saved ({allCount})
+        {t("saved.tabs.all", { count: allCount })}
       </Link>
       <Link
         href="/saved?collection=none"
@@ -17,7 +21,7 @@ export default function SavedFolderTabs({ collections, active, allCount, noneCou
           active === "none" ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600 hover:border-gray-300"
         }`}
       >
-        No folder ({noneCount})
+        {t("saved.tabs.noFolder", { count: noneCount })}
       </Link>
       {collections.map((c) => (
         <Link
@@ -27,7 +31,7 @@ export default function SavedFolderTabs({ collections, active, allCount, noneCou
             active === c.id ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600 hover:border-gray-300"
           }`}
         >
-          {c.name} ({c.count})
+          {t("saved.tabs.folder", { name: c.name, count: c.count })}
         </Link>
       ))}
     </nav>

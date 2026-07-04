@@ -22,6 +22,7 @@ model User {
   interests    String?  // comma-separated
   links        String?  // newline-separated URLs
   theme        String   @default("default") // profile accent theme
+  locale       String   @default("th") // UI language: th | en
   role         String   @default("STUDENT") // STUDENT | PARENT | TEACHER | ADMIN
   gradeClass   String?  // e.g. "Class 6B" — shown as a badge
   private      Boolean  @default(true) // Student/Parent default private; Teacher/Admin are always public regardless of this flag
@@ -345,6 +346,7 @@ model PostMedia {
   url   String
   type  String  @default("IMAGE") // IMAGE | VIDEO | AUDIO | DOCUMENT
   name  String? // original filename (for audio/document downloads)
+  alt   String? // manual accessibility alt-text, author-supplied
   order Int     @default(0)
 
   postId String

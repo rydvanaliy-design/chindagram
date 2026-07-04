@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { BUILTIN_GIFS } from "@/lib/gifs";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // The comment box at the bottom of a post: text, plus an optional attached
 // image (uploaded) or a small built-in GIF — not both at once.
 export default function CommentComposer({ onSubmit }) {
+  const { t } = useT();
   const [draft, setDraft] = useState("");
   const [attachment, setAttachment] = useState(null); // { previewUrl, file? , gifUrl?, type }
   const [showGifs, setShowGifs] = useState(false);
@@ -34,7 +36,7 @@ export default function CommentComposer({ onSubmit }) {
       const form = new FormData();
       form.append("image", attachment.file);
       const res = await fetch("/api/comments/upload-image", { method: "POST", body: form });
-      if (!res.ok) { setBusy(false); window.alert("Could not upload image."); return; }
+      if (!res.ok) { setBusy(false); window.alert(t("posts.comments.uploadImageError")); return; }
       const d = await res.json();
       mediaUrl = d.url; mediaType = "IMAGE";
     }
@@ -50,7 +52,7 @@ export default function CommentComposer({ onSubmit }) {
       {attachment && (
         <div className="relative mb-2 inline-block">
           <img src={attachment.previewUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
-          <button type="button" onClick={() => setAttachment(null)}
+          <button type="button" onClick={() => setAttachment(null)} aria-label={t("posts.comments.removeAttachment")}
             className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-gray-800 text-xs text-white">✕</button>
         </div>
       )}
@@ -68,16 +70,16 @@ export default function CommentComposer({ onSubmit }) {
       )}
 
       <form onSubmit={submit} className="flex items-center gap-2">
-        <label className="shrink-0 cursor-pointer text-lg" title="Attach an image">
+        <label className="shrink-0 cursor-pointer text-lg" title={t("posts.comments.attachImage")}>
           🖼️
-          <input type="file" accept="image/*" onChange={pickImage} className="hidden" />
+          <input type="file" accept="image/*" onChange={pickImage} className="hidden" aria-label={t("posts.comments.attachImage")} />
         </label>
-        <button type="button" onClick={() => setShowGifs((v) => !v)} title="Add a GIF"
+        <button type="button" onClick={() => setShowGifs((v) => !v)} title={t("posts.comments.addGif")} aria-label={t("posts.comments.addGif")}
           className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-100">GIF</button>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add a comment…"
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("posts.comments.placeholder")}
           className="flex-1 text-sm outline-none placeholder:text-gray-400" />
         <button type="submit" disabled={(!draft.trim() && !attachment) || busy} className="shrink-0 text-sm font-semibold text-brand disabled:text-gray-300">
-          {busy ? "Posting…" : "Post"}
+          {busy ? t("posts.comments.posting") : t("posts.comments.post")}
         </button>
       </form>
     </div>

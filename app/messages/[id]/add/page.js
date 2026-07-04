@@ -6,10 +6,14 @@ import { isConversationAdmin } from "@/lib/messages";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import AddMembersForm from "@/components/AddMembersForm";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 
 export const dynamic = "force-dynamic";
 
 export default async function AddMembersPage({ params }) {
+  const locale = await getLocale();
+  const t = makeT(locale);
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
   const me = viewer.id;
@@ -30,7 +34,7 @@ export default async function AddMembersPage({ params }) {
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
-        <h1 className="mb-4 text-lg font-semibold">Add people</h1>
+        <h1 className="mb-4 text-lg font-semibold">{t("messages.addMembers.title")}</h1>
         <AddMembersForm conversationId={params.id} users={users} spotsLeft={Math.max(0, 30 - existingIds.length)} />
       </main>
       <BottomNav />

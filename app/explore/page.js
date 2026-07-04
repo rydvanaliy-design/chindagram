@@ -9,6 +9,8 @@ import { Search, Reel } from "@/components/icons";
 import { blockedIdsFor, postVisibleToViewer } from "@/lib/privacy";
 import { engagementScore } from "@/lib/ranking";
 import { trendingHashtags } from "@/lib/trending";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,8 @@ function formatEventDate(d) {
 export default async function ExplorePage({ searchParams }) {
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
+  const locale = await getLocale();
+  const t = makeT(locale);
   const me = viewer.id;
   const q = (searchParams?.q || "").trim();
   const isAdmin = viewer.role === "ADMIN";
@@ -71,7 +75,7 @@ export default async function ExplorePage({ searchParams }) {
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-4">
         <form action="/explore" className="mb-4 flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2">
           <span className="text-gray-400"><Search /></span>
-          <input name="q" defaultValue={q} placeholder="Search people, posts, #tags, clubs, events" className="flex-1 text-sm outline-none" />
+          <input name="q" defaultValue={q} placeholder={t("discovery.search.placeholder")} className="flex-1 text-sm outline-none" />
         </form>
 
         {q ? (
@@ -80,15 +84,15 @@ export default async function ExplorePage({ searchParams }) {
               <section className="mb-6">
                 <Link href={`/tag/${tagQuery}`} className="block rounded-2xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50">
                   <span className="font-semibold text-brand">#{tagQuery}</span>
-                  <span className="ml-2 text-sm text-gray-500">{hashtagCount} {hashtagCount === 1 ? "post" : "posts"}</span>
+                  <span className="ml-2 text-sm text-gray-500">{hashtagCount === 1 ? t("discovery.tag.postCountOne") : t("discovery.tag.postCount", { count: hashtagCount })}</span>
                 </Link>
               </section>
             )}
 
             <section className="mb-6">
-              <h2 className="mb-2 text-sm font-semibold text-gray-500">People</h2>
+              <h2 className="mb-2 text-sm font-semibold text-gray-500">{t("discovery.sections.people")}</h2>
               {users.length === 0 ? (
-                <p className="text-sm text-gray-400">No one matches “{q}”.</p>
+                <p className="text-sm text-gray-400">{t("discovery.tag.noMatch", { query: q })}</p>
               ) : (
                 <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
                   {users.map((u) => (
@@ -108,7 +112,7 @@ export default async function ExplorePage({ searchParams }) {
 
             {posts.length > 0 && (
               <section className="mb-6">
-                <h2 className="mb-2 text-sm font-semibold text-gray-500">Posts</h2>
+                <h2 className="mb-2 text-sm font-semibold text-gray-500">{t("discovery.sections.posts")}</h2>
                 <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
                   {posts.map((p) => (
                     <li key={p.id}>
@@ -127,7 +131,7 @@ export default async function ExplorePage({ searchParams }) {
 
             {clubs.length > 0 && (
               <section className="mb-6">
-                <h2 className="mb-2 text-sm font-semibold text-gray-500">Clubs</h2>
+                <h2 className="mb-2 text-sm font-semibold text-gray-500">{t("discovery.sections.clubs")}</h2>
                 <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
                   {clubs.map((c) => (
                     <li key={c.id}>
@@ -136,7 +140,7 @@ export default async function ExplorePage({ searchParams }) {
                           <p className="truncate text-sm font-semibold">{c.name}</p>
                           {c.description && <p className="truncate text-xs text-gray-400">{c.description}</p>}
                         </div>
-                        <span className="shrink-0 text-xs text-gray-400">{c._count.members} {c._count.members === 1 ? "member" : "members"}</span>
+                        <span className="shrink-0 text-xs text-gray-400">{c._count.members === 1 ? t("discovery.clubs.memberCountOne") : t("discovery.clubs.memberCount", { count: c._count.members })}</span>
                       </Link>
                     </li>
                   ))}
@@ -146,7 +150,7 @@ export default async function ExplorePage({ searchParams }) {
 
             {events.length > 0 && (
               <section className="mb-6">
-                <h2 className="mb-2 text-sm font-semibold text-gray-500">Events</h2>
+                <h2 className="mb-2 text-sm font-semibold text-gray-500">{t("discovery.sections.events")}</h2>
                 <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
                   {events.map((e) => (
                     <li key={e.id}>
@@ -161,14 +165,14 @@ export default async function ExplorePage({ searchParams }) {
             )}
 
             {users.length === 0 && posts.length === 0 && clubs.length === 0 && events.length === 0 && hashtagCount === 0 && (
-              <p className="py-10 text-center text-sm text-gray-400">Nothing matches “{q}”.</p>
+              <p className="py-10 text-center text-sm text-gray-400">{t("discovery.tag.noMatchAny", { query: q })}</p>
             )}
           </>
         ) : (
           <>
             {hotTags.length > 0 && (
               <section className="mb-4">
-                <h2 className="mb-2 text-sm font-semibold text-gray-500">Trending hashtags</h2>
+                <h2 className="mb-2 text-sm font-semibold text-gray-500">{t("discovery.sections.trendingTags")}</h2>
                 <div className="flex flex-wrap gap-2">
                   {hotTags.map((t) => (
                     <Link key={t.tag} href={`/tag/${t.tag}`} className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-brand hover:bg-gray-50">
@@ -179,7 +183,7 @@ export default async function ExplorePage({ searchParams }) {
               </section>
             )}
 
-            <h2 className="mb-2 text-sm font-semibold text-gray-500">Trending</h2>
+            <h2 className="mb-2 text-sm font-semibold text-gray-500">{t("discovery.sections.trending")}</h2>
             <div className="grid grid-cols-3 gap-1 sm:gap-2">
               {trendingPosts.map((p) => {
                 const t = p.media[0];

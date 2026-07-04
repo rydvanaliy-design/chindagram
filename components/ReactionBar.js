@@ -1,6 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { REACTIONS, REACTION_EMOJI, DEFAULT_REACTION } from "@/lib/reactions";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const HOLD_MS = 350;
 
@@ -8,6 +9,7 @@ const HOLD_MS = 350;
 // Press-and-hold (or mouse-hold) reveals the full picker to choose a specific
 // reaction instead. Works the same for touch and mouse via pointer events.
 export default function ReactionBar({ postId, initialMyReaction, initialBreakdown, initialTotal, dark = false }) {
+  const { t } = useT();
   const [myReaction, setMyReaction] = useState(initialMyReaction);
   const [breakdown, setBreakdown] = useState(initialBreakdown);
   const [total, setTotal] = useState(initialTotal);
@@ -42,11 +44,23 @@ export default function ReactionBar({ postId, initialMyReaction, initialBreakdow
   function onPointerLeave() {
     clearTimeout(timerRef.current);
   }
+  // Press-and-hold is a touch/mouse-only affordance — keyboard users get the
+  // quick toggle via Enter/Space instead (same as a plain button click).
+  function onKeyDown(e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); quickToggle(); }
+  }
 
   function pick(type) {
     setPicking(false);
     send(type);
   }
+
+  useEffect(() => {
+    if (!picking) return;
+    function onEsc(e) { if (e.key === "Escape") setPicking(false); }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [picking]);
 
   const topTypes = REACTIONS.filter((t) => breakdown[t] > 0).sort((a, b) => breakdown[b] - breakdown[a]).slice(0, 3);
 
@@ -56,7 +70,8 @@ export default function ReactionBar({ postId, initialMyReaction, initialBreakdow
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerLeave}
-        aria-label="React"
+        onKeyDown={onKeyDown}
+        aria-label={t("posts.reactions.react")}
         className="text-2xl leading-none transition active:scale-90"
       >
         {myReaction ? REACTION_EMOJI[myReaction] : "🤍"}

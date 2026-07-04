@@ -1,15 +1,17 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // status: "NONE" | "REQUESTED" (I asked them) | "PENDING_THEM" (they asked me) | "FRIENDS"
 export default function FriendButton({ targetId, initialStatus }) {
   const router = useRouter();
+  const { t } = useT();
   const [status, setStatus] = useState(initialStatus);
   const [busy, setBusy] = useState(false);
 
   async function act() {
-    if (status === "FRIENDS" && !window.confirm("Remove this friend?")) return;
+    if (status === "FRIENDS" && !window.confirm(t("profile.friend.removeConfirm"))) return;
     setBusy(true);
     const res = await fetch(`/api/users/${targetId}/friend`, { method: "POST" });
     setBusy(false);
@@ -18,11 +20,11 @@ export default function FriendButton({ targetId, initialStatus }) {
   }
 
   const label = {
-    FRIENDS: "Friends",
-    REQUESTED: "Cancel request",
-    PENDING_THEM: "Confirm friend",
-    NONE: "Add friend",
-  }[status] || "Add friend";
+    FRIENDS: t("profile.friend.friends"),
+    REQUESTED: t("profile.friend.cancelRequest"),
+    PENDING_THEM: t("profile.friend.confirmFriend"),
+    NONE: t("profile.friend.addFriend"),
+  }[status] || t("profile.friend.addFriend");
 
   return (
     <button

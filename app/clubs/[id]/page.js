@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
 import { isClubAdmin } from "@/lib/clubs";
 import { visibleToViewer, postInclude, toPostProps } from "@/lib/posts";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { makeT } from "@/lib/i18n/t";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import Composer from "@/components/Composer";
@@ -18,6 +20,8 @@ export default async function ClubPage({ params, searchParams }) {
   const viewer = await getSessionUser();
   if (!viewer) redirect("/login");
   const me = viewer.id;
+  const locale = await getLocale();
+  const t = makeT(locale);
 
   const club = await prisma.club.findUnique({
     where: { id: params.id },
@@ -63,13 +67,15 @@ export default async function ClubPage({ params, searchParams }) {
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
-        <Link href="/clubs" className="mb-3 inline-block text-sm text-brand">← All clubs</Link>
+        <Link href="/clubs" className="mb-3 inline-block text-sm text-brand">{t("clubs.detail.backToAll")}</Link>
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-lg font-semibold">{club.name}</h1>
               {club.description && <p className="mt-1 text-sm text-gray-600">{club.description}</p>}
-              <p className="mt-2 text-xs text-gray-400">Started by {club.createdBy.name} · {club.members.length} {club.members.length === 1 ? "member" : "members"}</p>
+              <p className="mt-2 text-xs text-gray-400">
+                {t(club.members.length === 1 ? "clubs.detail.startedByOne" : "clubs.detail.startedByOther", { name: club.createdBy.name, count: club.members.length })}
+              </p>
             </div>
             <ClubJoinButton clubId={club.id} initialStatus={myMembership?.status || "NONE"} />
           </div>
@@ -78,7 +84,7 @@ export default async function ClubPage({ params, searchParams }) {
         {iAmAdmin && pendingRequests.length > 0 && (
           <>
             <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Pending requests ({pendingRequests.length})
+              {t("clubs.detail.pendingRequests", { count: pendingRequests.length })}
             </h2>
             <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
               {pendingRequests.map((r) => <ClubRequestRow key={r.id} clubId={club.id} user={r.user} />)}
@@ -88,7 +94,7 @@ export default async function ClubPage({ params, searchParams }) {
 
         {upcomingEvents.length > 0 && (
           <>
-            <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-gray-500">Upcoming events</h2>
+            <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-gray-500">{t("clubs.detail.upcomingEvents")}</h2>
             <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
               {upcomingEvents.map((e) => (
                 <li key={e.id}>
@@ -109,15 +115,15 @@ export default async function ClubPage({ params, searchParams }) {
         )}
 
         <div className="mb-3 mt-6 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Club feed</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{t("clubs.detail.clubFeed")}</h2>
           <div className="flex gap-2 text-xs">
-            <Link href={`/clubs/${club.id}`} className={`rounded-full border px-2.5 py-1 font-semibold ${!filesOnly ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}>All</Link>
-            <Link href={`/clubs/${club.id}?filter=files`} className={`rounded-full border px-2.5 py-1 font-semibold ${filesOnly ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}>Files</Link>
+            <Link href={`/clubs/${club.id}`} className={`rounded-full border px-2.5 py-1 font-semibold ${!filesOnly ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}>{t("clubs.detail.filterAll")}</Link>
+            <Link href={`/clubs/${club.id}?filter=files`} className={`rounded-full border px-2.5 py-1 font-semibold ${filesOnly ? "border-brand bg-brand text-white" : "border-gray-200 text-gray-600"}`}>{t("clubs.detail.filterFiles")}</Link>
           </div>
         </div>
         {posts.length === 0 ? (
           <p className="rounded-2xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-400">
-            {filesOnly ? "No files shared yet." : iAmMember ? "No posts yet — be the first to share something." : "No posts yet."}
+            {filesOnly ? t("clubs.detail.noFilesYet") : iAmMember ? t("clubs.detail.noPostsMember") : t("clubs.detail.noPostsGeneric")}
           </p>
         ) : (
           <div className="flex flex-col gap-4">
@@ -128,10 +134,10 @@ export default async function ClubPage({ params, searchParams }) {
         )}
 
         <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Members ({club.members.length})
+          {t("clubs.detail.membersHeading", { count: club.members.length })}
         </h2>
         {club.members.length === 0 ? (
-          <p className="rounded-2xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">No members yet.</p>
+          <p className="rounded-2xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">{t("clubs.detail.noMembersYet")}</p>
         ) : (
           <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
             {club.members.map((m) => (

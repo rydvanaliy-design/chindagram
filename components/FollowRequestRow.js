@@ -3,9 +3,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function FollowRequestRow({ requestId, user }) {
   const router = useRouter();
+  const { t } = useT();
   const [busy, setBusy] = useState(false);
   const [handled, setHandled] = useState(false);
 
@@ -28,8 +30,8 @@ export default function FollowRequestRow({ requestId, user }) {
         {user.username && <p className="truncate text-xs text-gray-400">@{user.username}</p>}
       </div>
       <div className="flex shrink-0 gap-2">
-        <button onClick={() => respond("accept")} disabled={busy} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">Confirm</button>
-        <button onClick={() => respond("decline")} disabled={busy} className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-60">Delete</button>
+        <button onClick={() => respond("accept")} disabled={busy} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{t("notifications.requests.confirm")}</button>
+        <button onClick={() => respond("decline")} disabled={busy} className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-60">{t("notifications.requests.delete")}</button>
       </div>
     </li>
   );

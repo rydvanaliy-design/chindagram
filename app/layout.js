@@ -1,4 +1,6 @@
 import "./globals.css";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 export const metadata = {
   title: "Chindagram",
@@ -6,9 +8,11 @@ export const metadata = {
   robots: { index: false, follow: false }, // not indexable (closed platform)
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const locale = await getLocale();
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <head>
         {/* Inter for Latin, Noto Sans Thai for clean Thai rendering.
             Loaded in the browser (no build-time fetch); falls back to system sans if offline. */}
@@ -19,7 +23,9 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans text-gray-900">{children}</body>
+      <body className="font-sans text-gray-900">
+        <LocaleProvider locale={locale}>{children}</LocaleProvider>
+      </body>
     </html>
   );
 }
