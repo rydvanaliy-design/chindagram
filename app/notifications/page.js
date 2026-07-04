@@ -18,6 +18,7 @@ const TEXT = {
   CLUB_ROLE_CHANGED: "made you a club admin", EVENT_CREATED: "created a new event",
   CLUB_ANNOUNCEMENT: "posted an announcement in your club",
   GROUP_ADDED: "added you to a group",
+  BROADCAST: "posted a school-wide announcement",
 };
 function linkFor(n) {
   if (n.type === "FOLLOW_REQUEST" || n.type === "FRIEND_REQUEST") return "/requests";
