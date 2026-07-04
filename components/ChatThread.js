@@ -4,13 +4,24 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import PostEmbed from "@/components/PostEmbed";
 import GroupInfoPanel from "@/components/GroupInfoPanel";
-import { ChevronLeft, Send } from "@/components/icons";
+import MessageReactionButton from "@/components/MessageReactionButton";
+import { REACTION_EMOJI } from "@/lib/reactions";
+import { ChevronLeft, Send, X } from "@/components/icons";
+
+function ReactionSummary({ reactions }) {
+  const entries = Object.entries(reactions || {}).filter(([, c]) => c > 0);
+  if (entries.length === 0) return null;
+  const total = entries.reduce((s, [, c]) => s + c, 0);
+  const top = entries.sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => REACTION_EMOJI[t]).join("");
+  return <span className="mt-0.5 inline-block rounded-full border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] shadow-sm">{top} {total}</span>;
+}
 
 export default function ChatThread({ conversationId, me, initial, isAdmin, isGroup, name, image, otherId, members, createdById, iAmGroupAdmin }) {
   const [messages, setMessages] = useState(initial);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
   const bottomRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -18,11 +29,20 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
   function addIfNew(incoming) {
     setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
   }
+  function applyReaction(messageId, reactions) {
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions } : m)));
+  }
 
   // Realtime delivery via SSE — instant, no polling needed for the common case.
+  // Payloads are wrapped as { kind, ...} so the same channel can carry
+  // different event kinds (new message, reaction update) on one connection.
   useEffect(() => {
     const es = new EventSource(`/api/conversations/${conversationId}/stream`);
-    es.addEventListener("message", (e) => addIfNew(JSON.parse(e.data)));
+    es.addEventListener("message", (e) => {
+      const payload = JSON.parse(e.data);
+      if (payload.kind === "message") addIfNew(payload.message);
+      else if (payload.kind === "reaction") applyReaction(payload.messageId, payload.reactions);
+    });
     return () => es.close();
   }, [conversationId]);
 
@@ -42,9 +62,21 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
     e.preventDefault();
     const text = draft.trim(); if (!text || busy) return;
     setBusy(true);
-    const res = await fetch(`/api/conversations/${conversationId}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text }) });
+    const res = await fetch(`/api/conversations/${conversationId}/messages`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: text, parentId: replyingTo?.id || null }),
+    });
     setBusy(false);
-    if (res.ok) { const d = await res.json(); addIfNew(d.message); setDraft(""); }
+    if (res.ok) { const d = await res.json(); addIfNew(d.message); setDraft(""); setReplyingTo(null); }
+  }
+  async function react(messageId, type) {
+    const res = await fetch(`/api/messages/${messageId}/react`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions: d.reactions, myReaction: d.myReaction } : m)));
+    }
   }
   async function report(id) {
     const reason = window.prompt("Report this message (optional reason):") ?? "";
@@ -58,6 +90,12 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
 
   function senderName(id) {
     return members.find((m) => m.id === id)?.name || "Someone";
+  }
+  function parentPreviewText(p) {
+    if (p.removed) return "message removed";
+    if (p.body) return p.body;
+    if (p.mediaType) return { IMAGE: "📷 Photo", VIDEO: "📹 Video", VOICE: "🎤 Voice note" }[p.mediaType] || "Attachment";
+    return "";
   }
 
   return (
@@ -81,9 +119,18 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
               {!mine && !m.removed && (
                 <button onClick={() => report(m.id)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">report</button>
               )}
+              {!m.removed && (
+                <button onClick={() => setReplyingTo(m)} className="text-[11px] text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-brand">reply</button>
+              )}
+              {!m.removed && <MessageReactionButton myReaction={m.myReaction} onReact={(type) => react(m.id, type)} />}
               <div className="max-w-[75%]">
                 {isGroup && !mine && !m.removed && (
                   <p className="mb-0.5 px-1 text-[11px] font-semibold text-gray-500">{senderName(m.senderId)}</p>
+                )}
+                {!m.removed && m.parent && (
+                  <div className="mb-1 truncate rounded-lg border-l-2 border-gray-300 bg-gray-50 px-2 py-1 text-[11px] text-gray-500">
+                    <span className="font-semibold">{m.parent.senderName}</span>: {parentPreviewText(m.parent)}
+                  </div>
                 )}
                 {!m.removed && m.sharedPost ? (
                   <>
@@ -99,6 +146,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
                     {m.removed ? "message removed" : m.body}
                   </span>
                 )}
+                <ReactionSummary reactions={m.reactions} />
               </div>
               {isAdmin && !m.removed && (
                 <button onClick={() => remove(m.id)} className="text-[11px] text-red-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600">remove</button>
@@ -109,6 +157,14 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
         <div ref={bottomRef} />
       </div>
 
+      {replyingTo && (
+        <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs">
+          <span className="min-w-0 truncate text-gray-600">
+            Replying to <span className="font-semibold">{senderName(replyingTo.senderId)}</span>: {parentPreviewText(replyingTo)}
+          </span>
+          <button onClick={() => setReplyingTo(null)} aria-label="Cancel reply" className="shrink-0 text-gray-400 hover:text-gray-700"><X /></button>
+        </div>
+      )}
       <form onSubmit={send} className="flex items-center gap-2 border-t border-gray-200 p-3">
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message…" className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-gray-400" />
         <button type="submit" disabled={!draft.trim() || busy} className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white disabled:opacity-40" aria-label="Send"><Send /></button>

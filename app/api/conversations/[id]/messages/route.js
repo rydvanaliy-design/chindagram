@@ -75,7 +75,7 @@ export async function POST(req, { params }) {
 
   // A brand-new message has no reactions yet, so this shape is identical for
   // every subscriber regardless of who's viewing — safe to broadcast as-is.
-  publish(params.id, toMessageProps(message, me));
+  publish(params.id, { kind: "message", message: toMessageProps(message, me) });
 
   return NextResponse.json({ message: toMessageProps(message, me) }, { status: 201 });
 }
