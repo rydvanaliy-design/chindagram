@@ -1,0 +1,18 @@
+# systemd unit: keeps Chindagram running 24/7 and restarts it if it ever
+# crashes or the server reboots. Installed by deploy/setup-server.sh.
+[Unit]
+Description=Chindagram (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/chindagram
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

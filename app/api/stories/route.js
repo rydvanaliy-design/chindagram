@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, tooManyResponse } from "@/lib/ratelimit";
 import { prisma } from "@/lib/prisma";
 import { saveImage } from "@/lib/upload";
 import { requireUserId } from "@/lib/guards";
@@ -40,6 +41,9 @@ async function resolveClubId(clubId, userId) {
 export async function POST(req) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+  const posted = rateLimit(`story:${userId}`, 20, 60 * 60 * 1000);
+  if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   try {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours

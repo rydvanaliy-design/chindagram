@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, tooManyResponse } from "@/lib/ratelimit";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/guards";
 import { notify } from "@/lib/notify";
@@ -36,6 +37,9 @@ export async function POST(req, { params }) {
   const me = await requireUserId();
   if (!me) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   if (!(await isConversationMember(params.id, me))) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  const posted = rateLimit(`message:${me}`, 40, 60 * 1000);
+  if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   const { body, sharedPostId, parentId, mediaUrl, mediaType } = await req.json().catch(() => ({}));
   const text = String(body || "").trim();

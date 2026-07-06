@@ -56,10 +56,10 @@ User, Post (kind = PHOTO|REEL) + PostMedia, Story (24h `expiresAt`), Comment, Li
 Accounts; posts (single, multi-photo carousel, video reels); stories (24h); feed (followed + self); likes; comments; saved/bookmarks; follow/unfollow; profiles with avatar upload + editable name/bio; search & explore; notifications (like/comment/follow/message) with unread badge; direct messages (poll-based, ~4s) with message reporting + admin removal; admin queue (remove posts/comments/messages, disable accounts); settings (edit profile, change password). Responsive, mobile-first.
 
 ## Known limitations / sensible next steps
-- **Registration is open.** Before real students: add an approved-school-email allowlist in `app/api/register/route.js`. This is the top pre-launch task.
-- **DMs are open with after-the-fact moderation** (owner's deliberate choice) and **poll-based, not realtime**. Consider realtime (websockets) and/or pre-send controls given minors are present.
-- No rate limiting yet (add e.g. Upstash before launch).
-- Video is stored on local disk — fine for dev, needs a video host for production.
+- **Registration is open — the owner's confirmed decision** (twice: v2 Phase 1 override, reaffirmed at launch). Do not add an email allowlist or approval gate unless the owner asks. Sign-up is rate-limited instead (`lib/ratelimit.js`, 5/hour/IP).
+- **DMs are open with after-the-fact moderation** (owner's deliberate choice); delivery is realtime via self-hosted SSE (`lib/messageStream.js`) with a 10s polling fallback.
+- **Rate limiting exists** (`lib/ratelimit.js`, in-memory, single-server by design) on register, login, posts, comments, messages, uploads, stories, reports, wall, AI. If the app ever scales past one server instance, move it (and messageStream) to Redis together.
+- Media stays on local disk **by design** — the deployment target (DEPLOY.md) is a single persistent VM with nightly backups, not a serverless host. A video CDN only becomes worth it if usage outgrows the school.
 - No automated tests yet; logic has been validated manually. Adding tests is worthwhile.
 
 ## v2 roadmap

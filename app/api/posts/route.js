@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, tooManyResponse } from "@/lib/ratelimit";
 import { prisma } from "@/lib/prisma";
 import { saveMedia, saveAudio, saveDocument } from "@/lib/upload";
 import { getSessionUser } from "@/lib/guards";
@@ -14,6 +15,9 @@ import { isClubMember } from "@/lib/clubs";
 export async function POST(req) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+  const posted = rateLimit(`post:${me.id}`, 15, 10 * 60 * 1000);
+  if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   try {
     const form = await req.formData();

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, tooManyResponse } from "@/lib/ratelimit";
 import { requireUserId } from "@/lib/guards";
 import { saveImage } from "@/lib/upload";
 
@@ -7,6 +8,9 @@ import { saveImage } from "@/lib/upload";
 export async function POST(req) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+  const posted = rateLimit(`upload:${userId}`, 20, 10 * 60 * 1000);
+  if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   try {
     const form = await req.formData();

@@ -3,7 +3,9 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },                    // no embedding in iframes
   { key: "X-Content-Type-Options", value: "nosniff" },          // don't guess content types
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // microphone=(self): voice notes in chat record via MediaRecorder on our own
+  // origin — an empty allowlist would block our own recorder too.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
   { key: "X-Robots-Tag", value: "noindex, nofollow" },          // keep it out of search engines
 ];
 

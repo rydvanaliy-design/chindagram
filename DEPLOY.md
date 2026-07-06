@@ -1,97 +1,116 @@
-# Putting Chindagram online — permanently and safely
+# Putting Chindagram online — free, fast, and safe
 
-Right now the app runs great **on your computer**. To keep it online 24/7 for the school, two things have to change, because a normal web host wipes its local disk between runs:
+The plan: a **free forever cloud server** from Oracle (their "Always Free" tier),
+in **Singapore** (about 30 ms from Thailand, so no lag), with a free web address
+from **DuckDNS** and automatic HTTPS. The app runs on it exactly as it runs on
+your Mac — same database, same photo storage, same instant chat. Nothing in the
+code has to change, and nothing costs money.
 
-1. The **database** moves from the local file (SQLite) to a hosted database (Postgres).
-2. **Photos** move from the local `/public/uploads` folder to a cloud image store.
+> Why not Vercel/Netlify-style hosting? Those hosts wipe their disk between
+> requests and don't hold long-lived connections — your photos/videos would
+> need a paid file service and live chat would silently become slow polling.
+> A real (free) server avoids both problems.
 
-Everything else stays the same. Below is the whole path in plain steps. The free tiers are enough to start; you only pay if it gets big.
-
----
-
-## Step 1 — Move the database to Postgres (free: Neon or Supabase)
-
-1. Make a free account at **neon.tech** (or supabase.com) and create a database. Copy its connection string (looks like `postgresql://user:pass@host/dbname`).
-2. In `prisma/schema.prisma`, change one line:
-   ```prisma
-   datasource db {
-     provider = "postgresql"   // was "sqlite"
-     url      = env("DATABASE_URL")
-   }
-   ```
-3. Put the connection string in your environment as `DATABASE_URL`.
-4. Run `npx prisma migrate deploy` (or `npx prisma migrate dev` the first time) to build the tables.
-
-That's the whole database swap — Prisma handles the rest, no code rewrite.
-
-## Step 2 — Move photos to a cloud store (free: Cloudinary)
-
-Photos must NOT be saved to the local folder online (the disk resets and they'd vanish). All the upload logic is already isolated in **one file**, `lib/upload.js`, so this is a small change.
-
-1. Make a free **cloudinary.com** account. Note your cloud name, API key, and API secret. Create an "unsigned upload preset" (or use signed uploads).
-2. Replace the body of `saveImage()` in `lib/upload.js` with an upload to Cloudinary, e.g.:
-   ```js
-   export async function saveImage(file) {
-     // ...keep the type + size checks...
-     const form = new FormData();
-     form.append("file", file);
-     form.append("upload_preset", process.env.CLOUDINARY_PRESET);
-     const res = await fetch(
-       `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD}/image/upload`,
-       { method: "POST", body: form }
-     );
-     const data = await res.json();
-     return data.secure_url; // the public image URL the app stores
-   }
-   ```
-3. Add `CLOUDINARY_CLOUD` and `CLOUDINARY_PRESET` to your environment.
-
-Because the app just stores whatever URL `saveImage` returns, nothing else needs to change.
-(Alternative: **Vercel Blob** — even simpler if you host on Vercel — needs the `@vercel/blob` package.)
-
-## Step 3 — Host it on Vercel (made by the Next.js team, free tier)
-
-1. Put the project on **GitHub** (a private repo).
-2. At **vercel.com**, "Import Project" and pick that repo.
-3. In Vercel's project settings → Environment Variables, add:
-   - `DATABASE_URL` (from Step 1)
-   - `AUTH_SECRET` (generate a fresh one: run `openssl rand -base64 32`)
-   - `CLOUDINARY_CLOUD`, `CLOUDINARY_PRESET` (from Step 2)
-4. Click Deploy. Vercel gives you a permanent `https://…vercel.app` address (you can add a custom domain later). HTTPS and secure login cookies are automatic.
-
-After the first deploy, every time you push to GitHub it redeploys itself.
+You do three things yourself (accounts can only be created by you); every
+technical step after that is one script.
 
 ---
 
-## Safety & security — what's already done, and what to add before real students
+## Part 1 — Create the free server (about 20 minutes, once)
 
-**Already in the build**
-- Passwords are hashed with bcrypt (never stored in plain text).
-- Login handled by Auth.js; sessions are signed with your secret `AUTH_SECRET`.
-- A **disabled account is locked out immediately** — every action re-checks the database, not just the old login cookie.
-- Admin tools (remove post/comment, disable account) are **checked on the server** — a normal user can't call them even by hand.
-- The site is marked **noindex** (search engines won't list it) and sends standard security headers (no iframe embedding, no content-type guessing).
-- Uploads are limited to images, max 8 MB.
+1. Go to **oracle.com/cloud/free** → "Start for free".
+   - Sign up with your email. It asks for a **credit/debit card for identity
+     verification only** — Always Free resources never charge it.
+   - For "Home Region" choose **Singapore** (ap-singapore-1). This cannot be
+     changed later and is what keeps the site fast from Thailand.
+2. Once you're in the console: **Menu → Compute → Instances → Create instance**.
+   - Name: `chindagram`
+   - Image: **Ubuntu 24.04** (Canonical Ubuntu)
+   - Shape: click "Change shape" → **Ampere → VM.Standard.A1.Flex** →
+     set **2 OCPUs and 12 GB memory** (well inside the free allowance).
+   - Under "Add SSH keys": choose **Generate a key pair for me** and
+     **download the private key file** — keep it safe, it's how you log in.
+   - Create. After a minute it shows a **Public IP address** — copy it.
+3. Open the ports so the internet can reach it:
+   - On the instance page click its **subnet** → **Default Security List** →
+     **Add Ingress Rules**. Add two rules, both with Source CIDR `0.0.0.0/0`,
+     protocol TCP: one with destination port **80**, one with port **443**.
 
-**Add before opening to real students (important with minors)**
-- **Lock sign-up to approved school accounts.** Today anyone with the link can register. Add an allowlist: a table (or simple list) of approved school emails, and reject `/api/register` if the email isn't on it. This is the single most important pre-launch change.
-- **Rate limiting** to stop spam/abuse (e.g., limit logins and posts per minute). Easiest add-on: Upstash Redis with `@upstash/ratelimit` — free tier, a few lines in each API route.
-- **Database backups** — turn on automatic backups in Neon/Supabase (one toggle).
-- **A real admin handover** — the first sign-up becomes admin; once you're set up, you can promote/demote others (a small change to the admin page when you want it).
+## Part 2 — Get the free web address (2 minutes)
 
-## Speed — keeping it from getting laggy
+1. Go to **duckdns.org**, sign in (Google works).
+2. Type a subdomain — e.g. `chindagram` → you get **chindagram.duckdns.org**.
+3. In the "current ip" box, paste the server's **Public IP** and click update.
 
-**Already done**
-- Database **indexes** on the columns the app filters and sorts by (feed by author+date, follows, comments, likes, reports) — keeps queries fast as data grows.
-- The **feed loads the 30 newest posts**, not everything, so it stays quick. (A "load more" button can extend this later.)
-- Likes and follows update **instantly in the browser** (optimistic), then confirm with the server.
+(That address is what the school's QR code will point to.)
 
-**Worth adding as it grows**
-- Serve resized/compressed images (Cloudinary can do this automatically by adding transform options to the URL) so big photos don't slow phones on school wifi.
-- "Load more"/infinite scroll on the feed once there are lots of posts.
-- Notifications and Search are planned for v2 — both want their own indexes too.
+## Part 3 — Upload the app and run the setup script
+
+On your Mac, in Terminal (replace the CAPITALS — `KEY.key` is the file you
+downloaded in Part 1, `IP` is the public IP):
+
+```bash
+# 1. Send the app to the server (first time only; takes a few minutes)
+chmod 600 ~/Downloads/KEY.key
+rsync -az -e "ssh -i ~/Downloads/KEY.key" \
+  --exclude node_modules --exclude .next --exclude .env \
+  --exclude prisma/dev.db --exclude public/uploads --exclude backups \
+  "/Users/rydvanaliyessimkhan/Desktop/Claude instagram/chindagram/" ubuntu@IP:/tmp/chindagram/
+
+# 2. Log in to the server
+ssh -i ~/Downloads/KEY.key ubuntu@IP
+
+# 3. On the server — move the app into place and run setup
+sudo mkdir -p /opt && sudo mv /tmp/chindagram /opt/chindagram
+cd /opt/chindagram && sudo bash deploy/setup-server.sh YOUR-SUBDOMAIN
+```
+
+The script installs everything (Node, the HTTPS proxy, the always-on service,
+nightly backups) and ends with your live address:
+**https://YOUR-SUBDOMAIN.duckdns.org**
+
+**Immediately open it and register — the first account becomes the admin.**
+The server starts with an empty database; you're not copying test data from
+your Mac, you're starting the real school site fresh.
+
+## Part 4 — Share it
+
+Make a QR code that points to your `https://…duckdns.org` address (any free QR
+generator) and put it up at school. Done.
 
 ---
 
-### Quick summary
-Local now = SQLite + local photos. Online permanently = **Postgres + Cloudinary + Vercel**, plus **lock sign-up to school emails** before any real student joins. The code is structured so each of those is a small, contained change — not a rewrite.
+## Already handled for you (safety & speed)
+
+- **HTTPS everywhere** — automatic certificate, auto-renewing.
+- **Rate limiting** on sign-up (5/hour per address), login attempts, posting,
+  messaging, uploads, and reports — spam and brute-force are throttled.
+- Passwords hashed, admin actions checked server-side, disabled accounts locked
+  out instantly, site invisible to search engines.
+- **Nightly backups** at 2 AM (database + all photos), kept 14 days, in
+  `/opt/chindagram/backups`. Once a month, copy the newest pair to your Mac:
+  ```bash
+  scp -i ~/Downloads/KEY.key "ubuntu@IP:/opt/chindagram/backups/db-*.sqlite" ~/Desktop/
+  ```
+- The app restarts itself if it crashes, and starts on its own if the server
+  reboots.
+
+## Updating the app later
+
+When the code changes on your Mac, re-run the `rsync` command from Part 3
+(step 1), then on the server:
+
+```bash
+cd /opt/chindagram && bash deploy/update.sh
+```
+
+## Good to know
+
+- **Keep the site in use.** Oracle can reclaim Always Free servers that sit
+  completely idle for a week — a school app used daily is fine.
+- **AI helpers** (caption suggestions, translation) stay hidden until you add
+  an `ANTHROPIC_API_KEY` line to `/opt/chindagram/.env` — that one feature is
+  pay-per-use, everything else stays free.
+- If the site is ever unreachable: log in via ssh, then
+  `sudo systemctl restart chindagram` — and `sudo systemctl status chindagram`
+  shows what happened.

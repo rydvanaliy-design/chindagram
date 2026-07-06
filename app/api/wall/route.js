@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, tooManyResponse } from "@/lib/ratelimit";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/guards";
 import { decideTextStatus } from "@/lib/moderation";
@@ -7,6 +8,9 @@ import { decideTextStatus } from "@/lib/moderation";
 export async function POST(req) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+  const posted = rateLimit(`wall:${userId}`, 20, 10 * 60 * 1000);
+  if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   const { ownerId, body } = await req.json().catch(() => ({}));
   const text = String(body || "").trim();
