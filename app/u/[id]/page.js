@@ -6,6 +6,7 @@ import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
 import FollowButton from "@/components/FollowButton";
+import SafeImage from "@/components/SafeImage";
 import FriendButton from "@/components/FriendButton";
 import BioEditor from "@/components/BioEditor";
 import { Reel, Lock } from "@/components/icons";
@@ -199,7 +200,7 @@ export default async function ProfilePage({ params }) {
               <Link key={h.id} href={`/highlights/${h.id}`} className="flex w-16 shrink-0 flex-col items-center gap-1">
                 <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-full border border-gray-200 bg-gray-100">
                   {h.stories[0]?.imageUrl ? (
-                    <img src={h.stories[0].imageUrl} alt="" className="h-full w-full object-cover" />
+                    <SafeImage src={h.stories[0].imageUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-lg">✨</span>
                   )}
@@ -243,7 +244,7 @@ export default async function ProfilePage({ params }) {
                         {isPhotoVideo ? (
                           isVideo
                             ? <video src={thumb.url} className="h-full w-full object-cover" muted />
-                            : <img src={thumb.url} alt="" className="h-full w-full object-cover" />
+                            : <SafeImage src={thumb.url} alt="" className="h-full w-full object-cover" />
                         ) : (
                           // Text / link / poll / audio / file posts have no image — show a text tile.
                           <div className="flex h-full w-full flex-col justify-between bg-gradient-to-br from-gray-50 to-gray-100 p-2">

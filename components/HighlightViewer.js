@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import SafeImage from "@/components/SafeImage";
 import { X } from "@/components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -63,7 +64,7 @@ export default function HighlightViewer({ highlightId, name, owner, stories, isO
         )}
         <button onClick={(e) => { e.stopPropagation(); router.push(backHref); }} aria-label={t("discovery.stories.close")}><X /></button>
       </div>
-      <img src={story.imageUrl} alt="" className="max-h-[85vh] max-w-full object-contain" />
+      <SafeImage src={story.imageUrl} alt="" className="max-h-[85vh] max-w-full object-contain" />
     </div>
   );
 }

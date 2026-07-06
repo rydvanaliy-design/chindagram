@@ -15,7 +15,6 @@ import CommentComposer from "@/components/CommentComposer";
 import TranslateToggle from "@/components/TranslateToggle";
 import { Comment as CommentIcon, Flag } from "@/components/icons";
 import { RoleBadge, ClassBadge } from "@/components/Badge";
-import { CATEGORY_LABELS } from "@/lib/postkinds";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 function timeAgo(iso, t) {
@@ -181,7 +180,7 @@ export default function PostCard({ post, currentUserId, isAdmin, canManageClub =
 
       {post.category && post.category !== "NONE" && (
         <div className="mx-4 mb-2 inline-block rounded-lg bg-accent/20 px-3 py-1 text-xs font-semibold text-brand">
-          {CATEGORY_LABELS[post.category] || post.category}
+          {t(`posts.categories.${post.category.toLowerCase()}`)}
         </div>
       )}
 

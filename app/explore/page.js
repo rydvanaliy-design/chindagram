@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/guards";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
+import SafeImage from "@/components/SafeImage";
 import { Search, Reel } from "@/components/icons";
 import { blockedIdsFor, postVisibleToViewer } from "@/lib/privacy";
 import { engagementScore } from "@/lib/ranking";
@@ -117,7 +118,7 @@ export default async function ExplorePage({ searchParams }) {
                   {posts.map((p) => (
                     <li key={p.id}>
                       <Link href={`/p/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
-                        {p.media[0] && <img src={p.media[0].url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />}
+                        {p.media[0] && <SafeImage src={p.media[0].url} alt="" className="h-12 w-12 shrink-0 rounded-lg bg-gray-100 object-cover" />}
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold">{p.author.name}</p>
                           <p className="truncate text-xs text-gray-400">{p.caption}</p>
@@ -190,7 +191,7 @@ export default async function ExplorePage({ searchParams }) {
                 const isVideo = p.kind === "REEL" || t?.type === "VIDEO";
                 return (
                   <Link key={p.id} href={`/p/${p.id}`} className="relative aspect-square overflow-hidden rounded-md bg-gray-100">
-                    {isVideo ? <video src={t?.url} className="h-full w-full object-cover" muted /> : <img src={t?.url} alt="" className="h-full w-full object-cover" />}
+                    {isVideo ? <video src={t?.url} className="h-full w-full object-cover" muted /> : <SafeImage src={t?.url} alt="" className="h-full w-full object-cover" />}
                     {isVideo && <span className="absolute right-1 top-1 text-white drop-shadow"><Reel /></span>}
                   </Link>
                 );

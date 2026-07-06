@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import PostEmbed from "@/components/PostEmbed";
+import SafeImage from "@/components/SafeImage";
 import GroupInfoPanel from "@/components/GroupInfoPanel";
 import MessageReactionButton from "@/components/MessageReactionButton";
 import { REACTION_EMOJI } from "@/lib/reactions";
@@ -212,7 +213,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
                     <>
                       <div className="mb-1 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 text-xs text-gray-500">
                         {!m.storyReply.unavailable && m.storyReply.imageUrl && (
-                          <img src={m.storyReply.imageUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                          <SafeImage src={m.storyReply.imageUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
                         )}
                         <span>{m.storyReply.unavailable ? t("messages.thread.storyUnavailable") : t("messages.thread.repliedToStory")}</span>
                       </div>

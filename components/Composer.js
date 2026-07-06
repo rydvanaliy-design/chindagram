@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CATEGORIES, CATEGORY_LABELS } from "@/lib/postkinds";
+import { CATEGORIES } from "@/lib/postkinds";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { useAiEnabled } from "@/lib/useAiEnabled";
 
@@ -161,7 +161,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
 
       {type === "photo" && (
         <>
-          <label className="flex aspect-square w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
+          <label className="flex aspect-square max-h-96 w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
             {previews.length === 0 ? (
               <span className="px-6">{t("posts.composer.choosePhotosHint")}</span>
             ) : isVideo ? (
@@ -266,7 +266,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand">
             <option value="NONE">{t("posts.composer.regularPost")}</option>
             {CATEGORIES.filter((c) => c !== "NONE").map((c) => (
-              <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+              <option key={c} value={c}>{t(`posts.categories.${c.toLowerCase()}`)}</option>
             ))}
           </select>
         </div>

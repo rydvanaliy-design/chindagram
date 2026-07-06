@@ -30,7 +30,9 @@ export default async function TopBar() {
       <div className="mx-auto flex h-14 max-w-xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <img src="/logo.png" alt={t("common.appName")} className="h-7 w-7 rounded-md" />
-          <span className="text-xl font-bold tracking-tight text-brand">Chindagram</span>
+          {/* The wordmark + a staff account's 6 nav icons don't both fit at
+              phone widths — keep just the logo mark there, like Instagram. */}
+          <span className="hidden text-xl font-bold tracking-tight text-brand sm:inline">Chindagram</span>
         </Link>
         <nav aria-label={t("common.nav.secondary")} className="flex items-center gap-4 text-gray-800">
           {isStaff && (

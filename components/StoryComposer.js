@@ -63,7 +63,7 @@ export default function StoryComposer({ club = null }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <label className="flex aspect-[9/16] w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
+      <label className="flex aspect-[9/16] max-h-[28rem] w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
         {preview ? <img src={preview} alt="Preview" className="h-full w-full object-cover" /> : <span className="px-6">{t("discovery.stories.choosePhoto")}</span>}
         <input type="file" accept="image/*" onChange={onPick} className="hidden" />
       </label>

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import RichText from "@/components/RichText";
+import SafeImage from "@/components/SafeImage";
 import TranslateToggle from "@/components/TranslateToggle";
 import { Heart, HeartFilled } from "@/components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -52,7 +53,7 @@ export default function CommentItem({ comment, isAdmin, canPin, onReply, onDelet
           {comment.pending && <span className="ml-1 text-[11px] font-semibold text-amber-600">· {t("posts.comments.pendingReview")}</span>}
           {pinned && <span className="ml-1 text-[11px] font-semibold text-brand">· 📌 {t("posts.comments.pinned")}</span>}
           {comment.mediaUrl && (
-            <img src={comment.mediaUrl} alt="" className="mt-1 h-24 w-24 rounded-lg object-cover" />
+            <SafeImage src={comment.mediaUrl} alt="" className="mt-1 h-24 w-24 rounded-lg object-cover" />
           )}
           {comment.body && <TranslateToggle text={comment.body} />}
           <span className="mt-0.5 flex items-center gap-3 text-[11px] text-gray-400">

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import PostEmbed from "@/components/PostEmbed";
+import SafeImage from "@/components/SafeImage";
 import { X, Bookmark } from "@/components/icons";
 import { REACTIONS, REACTION_EMOJI } from "@/lib/reactions";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -137,7 +138,7 @@ export default function StoriesBar({ groups, me, newStoryHref = "/stories/new", 
               <PostEmbed post={active.repostOf} />
             </div>
           ) : (
-            <img src={active.imageUrl} alt="" className="max-h-[85vh] max-w-full object-contain" />
+            <SafeImage src={active.imageUrl} alt="" className="max-h-[85vh] max-w-full object-contain" />
           )}
 
           {isOwn && pickingHighlight && (

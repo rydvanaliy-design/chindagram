@@ -1,12 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 // Renders a post's media: single image, swipeable multi-image carousel, or video.
 export default function PostMedia({ media }) {
   const { t } = useT();
+  const imgRef = useRef(null);
   const [i, setI] = useState(0);
+  const [broken, setBroken] = useState({}); // index -> true when the file is missing from disk
+
+  // A missing file's error event can fire before hydration attaches onError,
+  // so also re-check naturalWidth once mounted (broken images report 0).
+  const currentUrl = media && media[i] ? media[i].url : null;
+  useEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth === 0) setBroken((b) => ({ ...b, [i]: true }));
+  }, [i, currentUrl]);
+
   if (!media || media.length === 0) return null;
 
   const current = media[i];
@@ -14,10 +25,15 @@ export default function PostMedia({ media }) {
 
   return (
     <div className="relative bg-black">
-      {isVideo ? (
-        <video src={current.url} controls playsInline loop className="mx-auto max-h-[72vh] w-full bg-black" />
+      {broken[i] ? (
+        // Missing file (deleted upload): keep a stable block so the carousel
+        // controls don't float over collapsed space, and skip the browser's
+        // broken-image icon.
+        <div className="grid aspect-square w-full place-items-center bg-gray-100 text-4xl">🖼️</div>
+      ) : isVideo ? (
+        <video src={current.url} controls playsInline loop onError={() => setBroken((b) => ({ ...b, [i]: true }))} className="mx-auto max-h-[72vh] w-full bg-black" />
       ) : (
-        <img src={current.url} alt={current.alt || ""} className="mx-auto max-h-[72vh] w-full bg-black object-contain" />
+        <img ref={imgRef} src={current.url} alt={current.alt || ""} onError={() => setBroken((b) => ({ ...b, [i]: true }))} className="mx-auto max-h-[72vh] w-full bg-black object-contain" />
       )}
 
       {media.length > 1 && (

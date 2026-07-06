@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import SafeImage from "@/components/SafeImage";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 // Compact clickable preview of an original post — used when a post is a
@@ -26,7 +27,7 @@ export default function PostEmbed({ post, className = "" }) {
         media.type === "VIDEO" ? (
           <video src={media.url} className="max-h-72 w-full bg-black object-contain" muted />
         ) : (
-          <img src={media.url} alt={media.alt || ""} className="max-h-72 w-full bg-black object-contain" />
+          <SafeImage src={media.url} alt={media.alt || ""} className="max-h-72 w-full bg-black object-contain" />
         )
       ) : null}
       {post.linkUrl && <p className="truncate px-3 pb-2 pt-2 text-xs text-brand">{post.linkUrl}</p>}

@@ -124,7 +124,7 @@ export default async function ClubPage({ params, searchParams }) {
                 <li key={e.id}>
                   <Link href={`/events/${e.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
                     <span className="truncate text-sm font-medium">{e.title}</span>
-                    <span className="shrink-0 text-xs text-gray-400">{new Date(e.startAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                    <span className="shrink-0 text-xs text-gray-400">{new Date(e.startAt).toLocaleDateString(locale === "th" ? "th-TH" : undefined, { month: "short", day: "numeric" })}</span>
                   </Link>
                 </li>
               ))}

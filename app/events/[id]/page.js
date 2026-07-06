@@ -13,11 +13,12 @@ import CancelEventButton from "@/components/CancelEventButton";
 
 export const dynamic = "force-dynamic";
 
-function formatWhen(startAt, endAt) {
+function formatWhen(startAt, endAt, locale) {
+  const lang = locale === "th" ? "th-TH" : undefined;
   const opts = { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" };
-  const start = new Date(startAt).toLocaleString(undefined, opts);
+  const start = new Date(startAt).toLocaleString(lang, opts);
   if (!endAt) return start;
-  const end = new Date(endAt).toLocaleString(undefined, { hour: "numeric", minute: "2-digit" });
+  const end = new Date(endAt).toLocaleString(lang, { hour: "numeric", minute: "2-digit" });
   return `${start} – ${end}`;
 }
 
@@ -50,7 +51,7 @@ export default async function EventPage({ params }) {
         <Link href="/events" className="mb-3 inline-block text-sm text-brand">{t("events.detail.backToAll")}</Link>
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <h1 className="text-lg font-semibold">{event.title}</h1>
-          <p className="mt-1 text-sm text-gray-700">{formatWhen(event.startAt, event.endAt)}</p>
+          <p className="mt-1 text-sm text-gray-700">{formatWhen(event.startAt, event.endAt, locale)}</p>
           {event.location && <p className="mt-1 text-sm text-gray-500">{t("events.detail.location", { location: event.location })}</p>}
           {event.description && <p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">{event.description}</p>}
           <p className="mt-3 text-xs text-gray-400">

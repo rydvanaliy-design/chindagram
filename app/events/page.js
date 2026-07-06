@@ -12,11 +12,12 @@ import EventRSVPButtons from "@/components/EventRSVPButtons";
 
 export const dynamic = "force-dynamic";
 
-function formatWhen(startAt, endAt) {
+function formatWhen(startAt, endAt, locale) {
+  const lang = locale === "th" ? "th-TH" : undefined;
   const opts = { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
-  const start = new Date(startAt).toLocaleString(undefined, opts);
+  const start = new Date(startAt).toLocaleString(lang, opts);
   if (!endAt) return start;
-  const end = new Date(endAt).toLocaleString(undefined, { hour: "numeric", minute: "2-digit" });
+  const end = new Date(endAt).toLocaleString(lang, { hour: "numeric", minute: "2-digit" });
   return `${start} – ${end}`;
 }
 
@@ -84,7 +85,7 @@ export default async function EventsPage({ searchParams }) {
               <li key={e.id} className="rounded-2xl border border-gray-200 bg-white p-4">
                 <Link href={`/events/${e.id}`} className="block">
                   <p className="font-semibold hover:underline">{e.title}</p>
-                  <p className="mt-0.5 text-sm text-gray-600">{formatWhen(e.startAt, e.endAt)}</p>
+                  <p className="mt-0.5 text-sm text-gray-600">{formatWhen(e.startAt, e.endAt, locale)}</p>
                   {e.location && <p className="mt-0.5 text-xs text-gray-400">{t("events.page.location", { location: e.location })}</p>}
                   <p className="mt-1 text-xs text-gray-400">
                     {e.club ? `${e.club.name} · ` : e.gradeClass ? `${e.gradeClass} · ` : ""}
