@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canModerateContent } from "@/lib/roles";
-import { Search, Bell, Send, Shield, Flag, Calendar } from "@/components/icons";
+import { Search, Bell, Send, Shield, Flag, Calendar, Settings } from "@/components/icons";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { makeT } from "@/lib/i18n/t";
 
@@ -49,6 +49,9 @@ export default async function TopBar() {
             {unread > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}
           </Link>
           <Link href="/messages" title={t("common.nav.messages")} aria-label={t("common.nav.messages")} className="hover:text-brand"><Send /></Link>
+          {/* Every account gets this — it's personal settings, not an admin
+              feature. Admin/staff-only tools stay gated above (Shield/Flag). */}
+          {user?.id && <Link href="/settings" title={t("common.nav.settings")} aria-label={t("common.nav.settings")} className="hover:text-brand"><Settings /></Link>}
         </nav>
       </div>
     </header>
