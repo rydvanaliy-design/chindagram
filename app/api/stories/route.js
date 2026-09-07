@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit, tooManyResponse } from "@/lib/ratelimit";
 import { prisma } from "@/lib/prisma";
-import { saveImage } from "@/lib/upload";
+import { publicUrl, verifyUploaded } from "@/lib/storage";
 import { requireUserId } from "@/lib/guards";
 import { visibleToViewer } from "@/lib/posts";
 import { postVisibleToViewer } from "@/lib/privacy";
@@ -42,7 +42,7 @@ export async function POST(req) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const posted = rateLimit(`story:${userId}`, 20, 60 * 60 * 1000);
+  const posted = await rateLimit(`story:${userId}`, 20, 60 * 60 * 1000);
   if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   try {
@@ -68,11 +68,15 @@ export async function POST(req) {
     }
 
     const form = await req.formData();
-    const file = form.get("photo");
-    if (!file || typeof file === "string") {
+    // The photo is already in Supabase Storage; we get its path, not its bytes.
+    const photoPath = String(form.get("photoPath") || "").trim();
+    if (!photoPath) {
       return NextResponse.json({ error: "Please choose a photo." }, { status: 400 });
     }
-    const imageUrl = await saveImage(file);
+    if (!(await verifyUploaded(photoPath))) {
+      return NextResponse.json({ error: "That upload didn't finish. Please try again." }, { status: 400 });
+    }
+    const imageUrl = publicUrl(photoPath);
     const closeFriendsOnly = form.get("closeFriendsOnly") === "true";
     const clubId = await resolveClubId(form.get("clubId") || null, userId);
     const stickerOptionsRaw = form.get("stickerOptions");

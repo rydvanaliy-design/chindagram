@@ -13,6 +13,17 @@ const nextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // Uploaded photos are served from Supabase Storage, not from /public.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" }],
+  },
+  // Prisma's query engine is a binary that Next's file tracing misses, so
+  // Vercel would otherwise ship a function that cannot reach the database.
+  experimental: {
+    outputFileTracingIncludes: {
+      "/api/**/*": ["./node_modules/.prisma/client/**/*"],
+    },
+  },
 };
 
 module.exports = nextConfig;

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/guards";
 import { messageInclude, toMessageProps, conversationDisplay } from "@/lib/messages";
 import ChatThread from "@/components/ChatThread";
+import { channelFor } from "@/lib/realtime";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function ThreadPage({ params }) {
 
   return (
     <ChatThread
-      conversationId={convo.id} me={me} initial={initial} isAdmin={viewer.role === "ADMIN"}
+      conversationId={convo.id} channel={channelFor(convo.id)} me={me} initial={initial} isAdmin={viewer.role === "ADMIN"}
       isGroup={convo.isGroup} name={display.name} image={display.image} otherId={display.otherId || null}
       members={members} createdById={convo.createdById} iAmGroupAdmin={myMembership.role === "ADMIN"}
     />

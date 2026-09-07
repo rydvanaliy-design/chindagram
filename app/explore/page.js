@@ -37,23 +37,23 @@ export default async function ExplorePage({ searchParams }) {
   if (q) {
     [users, posts, clubs, events, hashtagCount] = await Promise.all([
       prisma.user.findMany({
-        where: { disabled: false, id: { notIn: [me, ...blockedIds] }, name: { contains: q } },
+        where: { disabled: false, id: { notIn: [me, ...blockedIds] }, name: { contains: q, mode: "insensitive" } },
         take: 10, select: { id: true, name: true, image: true, bio: true },
       }),
       prisma.post.findMany({
-        where: { ...postVisibility, caption: { contains: q } },
+        where: { ...postVisibility, caption: { contains: q, mode: "insensitive" } },
         orderBy: { createdAt: "desc" }, take: 10,
         select: { id: true, caption: true, author: { select: { name: true } }, media: { orderBy: { order: "asc" }, take: 1, select: { url: true, type: true } } },
       }),
       prisma.club.findMany({
-        where: { OR: [{ name: { contains: q } }, { description: { contains: q } }] },
+        where: { OR: [{ name: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] },
         take: 10, select: { id: true, name: true, description: true, _count: { select: { members: { where: { status: "ACCEPTED" } } } } },
       }),
       prisma.event.findMany({
-        where: { title: { contains: q }, startAt: { gte: new Date() } },
+        where: { title: { contains: q, mode: "insensitive" }, startAt: { gte: new Date() } },
         orderBy: { startAt: "asc" }, take: 10, select: { id: true, title: true, startAt: true },
       }),
-      tagQuery ? prisma.post.count({ where: { ...postVisibility, caption: { contains: `#${tagQuery}` } } }) : 0,
+      tagQuery ? prisma.post.count({ where: { ...postVisibility, caption: { contains: `#${tagQuery}`, mode: "insensitive" } } }) : 0,
     ]);
   }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/guards";
-import { saveImage } from "@/lib/upload";
+import { publicUrl, verifyUploaded } from "@/lib/storage";
 import { sanitizeUsername, isValidUsername } from "@/lib/username";
 import { THEME_KEYS } from "@/lib/themes";
 
@@ -18,7 +18,7 @@ export async function POST(req) {
     const interests = String(form.get("interests") || "").trim();
     const links = String(form.get("links") || "").trim();
     const theme = String(form.get("theme") || "").trim();
-    const avatar = form.get("avatar");
+    const avatarPath = String(form.get("avatarPath") || "").trim();
 
     const data = {};
     if (name) data.name = name.slice(0, 60);
@@ -41,8 +41,13 @@ export async function POST(req) {
       data.username = clean;
     }
 
-    if (avatar && typeof avatar !== "string" && avatar.size > 0) {
-      data.image = await saveImage(avatar);
+    // Avatar arrives as a Supabase Storage path, uploaded straight from the
+    // browser; verify it exists before pointing the profile at it.
+    if (avatarPath) {
+      if (!(await verifyUploaded(avatarPath))) {
+        return NextResponse.json({ error: "That upload didn't finish. Please try again." }, { status: 400 });
+      }
+      data.image = publicUrl(avatarPath);
     }
 
     await prisma.user.update({ where: { id: userId }, data });

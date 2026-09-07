@@ -7,7 +7,7 @@ export async function POST(req) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const posted = rateLimit(`ai:${userId}`, 20, 10 * 60 * 1000);
+  const posted = await rateLimit(`ai:${userId}`, 20, 10 * 60 * 1000);
   if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
   if (!isAiEnabled()) return NextResponse.json({ error: "AI helpers are not enabled." }, { status: 404 });
 

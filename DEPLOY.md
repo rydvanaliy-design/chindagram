@@ -1,116 +1,140 @@
-# Putting Chindagram online — free, fast, and safe
+# Putting Chindagram online — Vercel + Supabase
 
-The plan: a **free forever cloud server** from Oracle (their "Always Free" tier),
-in **Singapore** (about 30 ms from Thailand, so no lag), with a free web address
-from **DuckDNS** and automatic HTTPS. The app runs on it exactly as it runs on
-your Mac — same database, same photo storage, same instant chat. Nothing in the
-code has to change, and nothing costs money.
+The plan: the app runs on **Vercel** (free Hobby plan), the database and all
+uploaded photos live on **Supabase** (free plan), both in **Singapore** so the
+site is fast from Thailand. No server to patch, no SSH, no backup script.
 
-> Why not Vercel/Netlify-style hosting? Those hosts wipe their disk between
-> requests and don't hold long-lived connections — your photos/videos would
-> need a paid file service and live chat would silently become slow polling.
-> A real (free) server avoids both problems.
+> **Plan history.** An earlier version of this file used a free Oracle Cloud
+> server. That still works and needs no code changes, but it means running and
+> maintaining a Linux box. We chose Vercel + Supabase instead: nothing to
+> administer, at the cost of a storage ceiling (below) and a one-off migration
+> that is already done.
 
-You do three things yourself (accounts can only be created by you); every
-technical step after that is one script.
+## The one limit that matters
+
+Supabase's free plan includes about **1 GB of file storage**. That is the
+ceiling this app will hit first — not bandwidth, not database size.
+
+To make that last, every photo is **compressed in the browser before it is
+uploaded**: resized to 1600px and re-encoded as WebP. A 2.4 MB phone photo comes
+out around 220 KB, measured. That means roughly **4,500 photos per gigabyte**
+instead of about 300.
+
+Videos are **not** re-encoded — doing that in a browser needs a ~30 MB library
+and fails on many iPhones — so they are capped at **15 MB** instead. A video
+still costs as much space as ~70 photos, so they add up fast.
+
+**The admin page shows current storage use**, with an amber warning at 70%.
+Check it now and then. If it fills up, the options are archiving old posts or
+Supabase Pro (about $25/month).
 
 ---
 
-## Part 1 — Create the free server (about 20 minutes, once)
+## Part 1 — Supabase (once, ~10 minutes)
 
-1. Go to **oracle.com/cloud/free** → "Start for free".
-   - Sign up with your email. It asks for a **credit/debit card for identity
-     verification only** — Always Free resources never charge it.
-   - For "Home Region" choose **Singapore** (ap-singapore-1). This cannot be
-     changed later and is what keeps the site fast from Thailand.
-2. Once you're in the console: **Menu → Compute → Instances → Create instance**.
-   - Name: `chindagram`
-   - Image: **Ubuntu 24.04** (Canonical Ubuntu)
-   - Shape: click "Change shape" → **Ampere → VM.Standard.A1.Flex** →
-     set **2 OCPUs and 12 GB memory** (well inside the free allowance).
-   - Under "Add SSH keys": choose **Generate a key pair for me** and
-     **download the private key file** — keep it safe, it's how you log in.
-   - Create. After a minute it shows a **Public IP address** — copy it.
-3. Open the ports so the internet can reach it:
-   - On the instance page click its **subnet** → **Default Security List** →
-     **Add Ingress Rules**. Add two rules, both with Source CIDR `0.0.0.0/0`,
-     protocol TCP: one with destination port **80**, one with port **443**.
+1. Go to **supabase.com**, sign in, **New project**.
+   - Region: **Southeast Asia (Singapore)**. This cannot be changed later and
+     is what keeps the app fast from Thailand.
+   - Set a database password and save it somewhere safe — you need it below.
+2. **Storage → New bucket**
+   - Name: exactly `uploads`
+   - **Public bucket: ON.** (Filenames are random UUIDs, so URLs can't be
+     guessed. This matches how the old `/uploads` folder worked.)
+3. **Project Settings → API keys.** You need two values:
+   - the **anon / public** key — safe to share
+   - the **service_role** key — **secret**. It bypasses every access rule.
+     Never commit it, never paste it into a chat, never put it in a variable
+     whose name starts with `NEXT_PUBLIC_`.
+4. **Project Settings → Database → Connection string.** Copy both the
+   **Transaction pooler** (port 6543) and **Session/direct** (port 5432) URLs.
 
-## Part 2 — Get the free web address (2 minutes)
+## Part 2 — Fill in `.env` on your Mac
 
-1. Go to **duckdns.org**, sign in (Google works).
-2. Type a subdomain — e.g. `chindagram` → you get **chindagram.duckdns.org**.
-3. In the "current ip" box, paste the server's **Public IP** and click update.
+Copy `.env.example` to `.env` if you haven't, then set:
 
-(That address is what the school's QR code will point to.)
+| Variable | Where it comes from |
+|---|---|
+| `DATABASE_URL` | pooler string (port **6543**), password filled in |
+| `DIRECT_URL` | direct string (port **5432**), password filled in |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role key |
+| `SUPABASE_STORAGE_BUCKET` | `uploads` |
+| `AUTH_SECRET` | already set — **keep it**, it also secures chat channels |
 
-## Part 3 — Upload the app and run the setup script
+Why two database URLs: Vercel runs every request in its own short-lived
+function. Without the pooler, each one opens a fresh Postgres connection and
+the database runs out within minutes. `DIRECT_URL` exists because
+`prisma migrate` needs a real session the pooler can't give it.
 
-On your Mac, in Terminal (replace the CAPITALS — `KEY.key` is the file you
-downloaded in Part 1, `IP` is the public IP):
+Then create the tables:
 
 ```bash
-# 1. Send the app to the server (first time only; takes a few minutes)
-chmod 600 ~/Downloads/KEY.key
-rsync -az -e "ssh -i ~/Downloads/KEY.key" \
-  --exclude node_modules --exclude .next --exclude .env \
-  --exclude prisma/dev.db --exclude public/uploads --exclude backups \
-  "/Users/rydvanaliyessimkhan/Desktop/Claude instagram/chindagram/" ubuntu@IP:/tmp/chindagram/
-
-# 2. Log in to the server
-ssh -i ~/Downloads/KEY.key ubuntu@IP
-
-# 3. On the server — move the app into place and run setup
-sudo mkdir -p /opt && sudo mv /tmp/chindagram /opt/chindagram
-cd /opt/chindagram && sudo bash deploy/setup-server.sh YOUR-SUBDOMAIN
+npx prisma migrate deploy
 ```
 
-The script installs everything (Node, the HTTPS proxy, the always-on service,
-nightly backups) and ends with your live address:
-**https://YOUR-SUBDOMAIN.duckdns.org**
+Run the app locally to check it works:
 
-**Immediately open it and register — the first account becomes the admin.**
-The server starts with an empty database; you're not copying test data from
-your Mac, you're starting the real school site fresh.
+```bash
+npm run dev
+```
+
+## Part 3 — Vercel
+
+1. Put the code on **GitHub** (private repo).
+2. **vercel.com** → sign in with GitHub → **Add New Project** → pick the repo.
+3. Under **Environment Variables**, add **every variable from your `.env`**,
+   exactly the same names and values.
+4. Deploy. Vercel reads `vercel.json`, which pins functions to `sin1`
+   (Singapore) so they sit next to the database. Without that they default to
+   the USA and every page load makes a round trip across the Pacific.
+5. Open the deployed URL and **register first** — the first account is admin.
 
 ## Part 4 — Share it
 
-Make a QR code that points to your `https://…duckdns.org` address (any free QR
-generator) and put it up at school. Done.
+- Make a QR code for the Vercel URL and put it up at school.
+- Optional: a custom domain, free to attach in Vercel's dashboard.
+
+## Backups
+
+Supabase takes **daily database backups** on the free plan. Uploaded files are
+not covered by those, so once there is content worth keeping, download a copy
+from Storage now and then.
+
+To back up the database yourself:
+
+```bash
+npx prisma db pull --print > backup-schema.prisma
+```
 
 ---
 
-## Already handled for you (safety & speed)
+## What lives where
 
-- **HTTPS everywhere** — automatic certificate, auto-renewing.
-- **Rate limiting** on sign-up (5/hour per address), login attempts, posting,
-  messaging, uploads, and reports — spam and brute-force are throttled.
-- Passwords hashed, admin actions checked server-side, disabled accounts locked
-  out instantly, site invisible to search engines.
-- **Nightly backups** at 2 AM (database + all photos), kept 14 days, in
-  `/opt/chindagram/backups`. Once a month, copy the newest pair to your Mac:
-  ```bash
-  scp -i ~/Downloads/KEY.key "ubuntu@IP:/opt/chindagram/backups/db-*.sqlite" ~/Desktop/
-  ```
-- The app restarts itself if it crashes, and starts on its own if the server
-  reboots.
+| Thing | Where | Code |
+|---|---|---|
+| Pages and API | Vercel functions (Singapore) | `app/` |
+| Database | Supabase Postgres | `prisma/schema.prisma` |
+| Photos, videos, files | Supabase Storage, bucket `uploads` | `lib/storage.js` |
+| Image compression | The student's browser, before upload | `lib/compressImage.js` |
+| Live chat | Supabase Realtime broadcast | `lib/realtime.js` |
+| Rate limits | Postgres table `RateHit` | `lib/ratelimit.js` |
 
-## Updating the app later
+### Notes for whoever maintains this next
 
-When the code changes on your Mac, re-run the `rsync` command from Part 3
-(step 1), then on the server:
-
-```bash
-cd /opt/chindagram && bash deploy/update.sh
-```
-
-## Good to know
-
-- **Keep the site in use.** Oracle can reclaim Always Free servers that sit
-  completely idle for a week — a school app used daily is fine.
-- **AI helpers** (caption suggestions, translation) stay hidden until you add
-  an `ANTHROPIC_API_KEY` line to `/opt/chindagram/.env` — that one feature is
-  pay-per-use, everything else stays free.
-- If the site is ever unreachable: log in via ssh, then
-  `sudo systemctl restart chindagram` — and `sudo systemctl status chindagram`
-  shows what happened.
+- **Chat channel names are secret on purpose.** The browser subscribes with the
+  public anon key, so if a channel were named after the conversation id (which
+  is visible in the URL) anyone could listen in. The name is an HMAC of the
+  conversation id under `AUTH_SECRET`, handed out only after membership is
+  checked. Changing `AUTH_SECRET` silently breaks live chat until every open
+  page reloads — the polling fallback keeps it working meanwhile.
+- **Uploads never pass through the app server.** The browser asks
+  `/api/uploads/sign` for a signed URL and sends the file straight to Supabase.
+  Vercel caps request bodies at 4.5 MB, so a 15 MB video could not get through
+  an API route at all.
+- **Search needs `mode: "insensitive"`.** SQLite's `LIKE` was case-insensitive
+  for free; Postgres's is not. Any new `contains:` search query needs it, or it
+  will quietly stop matching `#Tag` against `#tag`.
+- **The rate limiter fails open.** If the database is unreachable, requests are
+  allowed rather than blocked — a database blip should not lock the whole school
+  out of logging in.

@@ -11,8 +11,8 @@ export async function POST(req) {
     // the most exposed one on the site — limit it hard per address. Counted
     // before validation so invalid attempts burn the budget too.
     const ip = clientIp(req);
-    const shortWindow = rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);       // 5 / hour
-    const dayWindow = rateLimit(`register-day:${ip}`, 20, 24 * 60 * 60 * 1000); // 20 / day
+    const shortWindow = await rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);       // 5 / hour
+    const dayWindow = await rateLimit(`register-day:${ip}`, 20, 24 * 60 * 60 * 1000); // 20 / day
     if (!shortWindow.ok) return tooManyResponse(shortWindow.retryAfterSec);
     if (!dayWindow.ok) return tooManyResponse(dayWindow.retryAfterSec);
 

@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { compressImage } from "@/lib/compressImage";
+import { uploadOne } from "@/lib/uploadClient";
 
 const STICKER_TYPES = ["POLL", "QUIZ", "QUESTION"];
 
@@ -18,12 +20,13 @@ export default function StoryComposer({ club = null }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  function onPick(e) {
+  async function onPick(e) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
     setError("");
+    const small = await compressImage(f, "story");
+    setFile(small);
+    setPreview(URL.createObjectURL(small));
   }
 
   async function onSubmit(e) {
@@ -37,8 +40,17 @@ export default function StoryComposer({ club = null }) {
     }
     setBusy(true);
 
+    let uploaded;
+    try {
+      uploaded = await uploadOne(file, "stories", t);
+    } catch (err) {
+      setError(err.message || t("discovery.stories.couldNotAdd"));
+      setBusy(false);
+      return;
+    }
+
     const form = new FormData();
-    form.append("photo", file);
+    form.append("photoPath", uploaded.path);
     form.append("closeFriendsOnly", String(closeFriendsOnly));
     if (club) form.append("clubId", club.id);
     if (stickerType) {

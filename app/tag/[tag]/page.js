@@ -18,10 +18,11 @@ export default async function TagPage({ params }) {
 
   const tag = String(params.tag || "").toLowerCase().replace(/[^a-z0-9_]/g, "");
 
-  // SQLite LIKE is case-insensitive for ASCII, so `contains` matches #Tag too.
+  // `mode: "insensitive"` is what makes #Tag match #tag on Postgres — SQLite
+  // gave this for free, Postgres does not.
   // We then keep only exact-token matches (so "#tag" doesn't match "#tagger").
   // Club posts live on the club's own page, not general hashtag discovery.
-  const candidates = tag ? await getPostList({ caption: { contains: `#${tag}` }, clubId: null }, me, 60) : [];
+  const candidates = tag ? await getPostList({ caption: { contains: `#${tag}`, mode: "insensitive" }, clubId: null }, me, 60) : [];
   const re = new RegExp(`#${tag}\\b`, "i");
   const posts = candidates.filter((p) => p.caption && re.test(p.caption));
 
