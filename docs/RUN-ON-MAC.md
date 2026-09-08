@@ -21,10 +21,8 @@ cd
 ```
 Then drag the **chindagram** folder (in `Desktop` → `Claude instagram`) onto the Terminal window. It fills in the location. Press `Return`.
 
-Or type this exact line instead and press `Return`:
-```
-cd "/Users/rydvanaliyessimkhan/Desktop/Claude instagram/chindagram"
-```
+(Dragging is the reliable way — it fills in the exact location, whatever the
+folder is called and wherever it lives.)
 
 ### 3. Install the app's parts (takes a few minutes)
 ```
