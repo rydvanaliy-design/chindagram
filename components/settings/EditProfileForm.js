@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { THEMES, THEME_KEYS } from "@/lib/themes";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { compressImage } from "@/lib/compressImage";
+import { uploadOne } from "@/lib/uploadClient";
 
 export default function EditProfileForm({ user }) {
   const router = useRouter();
@@ -20,11 +22,13 @@ export default function EditProfileForm({ user }) {
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
 
-  function pickAvatar(e) {
+  async function pickAvatar(e) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setAvatarFile(f);
-    setAvatarPreview(URL.createObjectURL(f));
+    // Avatars never render above ~150px, so 400px is generous and tiny.
+    const small = await compressImage(f, "avatar");
+    setAvatarFile(small);
+    setAvatarPreview(URL.createObjectURL(small));
   }
 
   async function save(e) {
@@ -38,7 +42,16 @@ export default function EditProfileForm({ user }) {
     form.append("interests", interests);
     form.append("links", links);
     form.append("theme", theme);
-    if (avatarFile) form.append("avatar", avatarFile);
+    if (avatarFile) {
+      try {
+        const up = await uploadOne(avatarFile, "avatars", t);
+        form.append("avatarPath", up.path);
+      } catch (err) {
+        setSaving(false);
+        setMsg(err.message || t("settings.editProfile.saveError"));
+        return;
+      }
+    }
     const res = await fetch("/api/settings/profile", { method: "POST", body: form });
     setSaving(false);
     if (res.ok) { setMsg(t("settings.editProfile.saved")); router.refresh(); }

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/guards";
 import { isReaction } from "@/lib/reactions";
 import { isConversationMember } from "@/lib/messages";
-import { publish } from "@/lib/messageStream";
+import { publish } from "@/lib/realtime";
 
 // Toggle a reaction on a message — same "tap again removes it, tap a
 // different one swaps it" pattern as post reactions. Publishes a

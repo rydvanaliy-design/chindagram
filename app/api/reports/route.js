@@ -8,7 +8,7 @@ export async function POST(req) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const posted = rateLimit(`report:${userId}`, 10, 60 * 60 * 1000);
+  const posted = await rateLimit(`report:${userId}`, 10, 60 * 60 * 1000);
   if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   const { postId, commentId, messageId, wallPostId, reason } = await req.json();

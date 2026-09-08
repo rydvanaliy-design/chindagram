@@ -4,7 +4,7 @@ import { requireUserId } from "@/lib/guards";
 import { notify } from "@/lib/notify";
 import { findOrCreate1to1, messageInclude, toMessageProps } from "@/lib/messages";
 import { isBlockedEitherWay } from "@/lib/privacy";
-import { publish } from "@/lib/messageStream";
+import { publish } from "@/lib/realtime";
 
 // Replying (or quick-reacting with an emoji) to someone's story sends them a
 // private DM that embeds the story, same as Instagram — there's no public

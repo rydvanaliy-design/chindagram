@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@/lib/postkinds";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { useAiEnabled } from "@/lib/useAiEnabled";
+import { compressPicked, checkVideo, formatBytes } from "@/lib/compressImage";
+import { uploadMany } from "@/lib/uploadClient";
 
 const DOC_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,application/pdf,text/plain";
 
@@ -35,23 +37,38 @@ export default function Composer({ isStaff = false, clubId = null }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [held, setHeld] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+  const [savedBytes, setSavedBytes] = useState(0);
 
-  function onPick(e) {
+  // Images are shrunk here, on the device, before they are ever uploaded --
+  // see lib/compressImage.js for why. Previews use the compressed file, so
+  // what you see in the composer is exactly what gets posted.
+  async function onPick(e) {
     const picked = Array.from(e.target.files || []);
     setError("");
+    setSavedBytes(0);
     if (picked.length === 0) { setFiles([]); setPreviews([]); setAltTexts([]); return; }
     const video = picked.find((f) => f.type.startsWith("video/"));
     if (video) {
+      const tooBig = checkVideo(video);
+      if (tooBig) { setError(t("posts.composer.errors.videoTooLarge", tooBig)); return; }
       setIsVideo(true);
       setFiles([video]);
       setPreviews([URL.createObjectURL(video)]);
       setAltTexts([]);
-    } else {
-      const imgs = picked.slice(0, 10);
-      setIsVideo(false);
-      setFiles(imgs);
-      setPreviews(imgs.map((f) => URL.createObjectURL(f)));
-      setAltTexts(imgs.map(() => ""));
+      return;
+    }
+    const imgs = picked.slice(0, 10);
+    setIsVideo(false);
+    setCompressing(true);
+    try {
+      const { files: small, savedBytes: saved } = await compressPicked(imgs, "post");
+      setFiles(small);
+      setPreviews(small.map((f) => URL.createObjectURL(f)));
+      setAltTexts(small.map(() => ""));
+      setSavedBytes(saved);
+    } finally {
+      setCompressing(false);
     }
   }
 
@@ -95,17 +112,27 @@ export default function Composer({ isStaff = false, clubId = null }) {
     }
     setBusy(true);
 
+    // Files go straight to Supabase Storage first; only their paths are sent
+    // to /api/posts. Vercel caps request bodies at 4.5 MB, so a video could
+    // never reach the API as form data anyway.
+    let uploads = [];
+    try {
+      if (type === "photo") uploads = await uploadMany(files, "posts", t);
+      else if (type === "audio" || type === "document") uploads = await uploadMany([attachment], "posts", t);
+    } catch (err) {
+      setError(err.message || t("posts.composer.errors.generic"));
+      setBusy(false);
+      return;
+    }
+
     const form = new FormData();
     form.append("kind", type === "photo" ? "" : type.toUpperCase());
     form.append("caption", caption);
     form.append("category", category);
     if (type === "link") form.append("linkUrl", linkUrl);
     if (type === "poll") cleanOptions.forEach((o) => form.append("option", o));
-    if (type === "photo") {
-      files.forEach((f) => form.append("media", f));
-      if (!isVideo) form.append("altTexts", JSON.stringify(altTexts));
-    }
-    if (type === "audio" || type === "document") form.append("media", attachment);
+    if (uploads.length > 0) form.append("uploads", JSON.stringify(uploads));
+    if (type === "photo" && !isVideo) form.append("altTexts", JSON.stringify(altTexts));
     if (collaborator.trim()) form.append("collaborator", collaborator.trim());
     if (clubId) form.append("clubId", clubId);
 
@@ -194,6 +221,10 @@ export default function Composer({ isStaff = false, clubId = null }) {
               ))}
             </div>
           )}
+          {compressing && <p className="text-xs text-gray-500">{t("posts.composer.compressing")}</p>}
+          {!compressing && savedBytes > 0 && (
+            <p className="text-xs text-gray-500">{t("posts.composer.compressed", { saved: formatBytes(savedBytes) })}</p>
+          )}
           {isVideo && <p className="text-xs text-gray-500">{t("posts.composer.willBeReel")}</p>}
         </>
       )}
@@ -273,7 +304,7 @@ export default function Composer({ isStaff = false, clubId = null }) {
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <button type="submit" disabled={busy} className="ig-btn py-2.5">{busy ? t("posts.composer.posting") : t("posts.composer.share")}</button>
+      <button type="submit" disabled={busy || compressing} className="ig-btn py-2.5">{busy ? t("posts.composer.posting") : t("posts.composer.share")}</button>
     </form>
   );
 }

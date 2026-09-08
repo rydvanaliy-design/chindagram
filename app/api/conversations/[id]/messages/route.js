@@ -6,7 +6,7 @@ import { notify } from "@/lib/notify";
 import { visibleToViewer } from "@/lib/posts";
 import { postVisibleToViewer } from "@/lib/privacy";
 import { isConversationMember, messageInclude, toMessageProps } from "@/lib/messages";
-import { publish } from "@/lib/messageStream";
+import { publish } from "@/lib/realtime";
 
 // Poll for new messages (?after=<ISO timestamp>). Every successful fetch
 // marks the conversation read up to now — opening/polling a thread IS
@@ -38,7 +38,7 @@ export async function POST(req, { params }) {
   if (!me) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   if (!(await isConversationMember(params.id, me))) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const posted = rateLimit(`message:${me}`, 40, 60 * 1000);
+  const posted = await rateLimit(`message:${me}`, 40, 60 * 1000);
   if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   const { body, sharedPostId, parentId, mediaUrl, mediaType } = await req.json().catch(() => ({}));

@@ -9,6 +9,9 @@ import MessageReactionButton from "@/components/MessageReactionButton";
 import { REACTION_EMOJI } from "@/lib/reactions";
 import { ChevronLeft, Send, X } from "@/components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { compressImage, checkVideo } from "@/lib/compressImage";
+import { uploadOne } from "@/lib/uploadClient";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 function ReactionSummary({ reactions }) {
   const entries = Object.entries(reactions || {}).filter(([, c]) => c > 0);
@@ -25,7 +28,7 @@ function MessageMedia({ url, type }) {
   return null;
 }
 
-export default function ChatThread({ conversationId, me, initial, isAdmin, isGroup, name, image, otherId, members, createdById, iAmGroupAdmin }) {
+export default function ChatThread({ conversationId, channel, me, initial, isAdmin, isGroup, name, image, otherId, members, createdById, iAmGroupAdmin }) {
   const { t } = useT();
   const [messages, setMessages] = useState(initial);
   const [draft, setDraft] = useState("");
@@ -33,6 +36,7 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
   const [showInfo, setShowInfo] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [attachment, setAttachment] = useState(null); // { file, previewUrl, kind: "media" | "voice", isVideo }
+  const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
   const [readState, setReadState] = useState(() => new Map(members.map((m) => [m.id, m.lastReadAt])));
   const bottomRef = useRef(null);
@@ -48,35 +52,45 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
     setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions } : m)));
   }
 
-  // Realtime delivery via SSE — instant, no polling needed for the common case.
-  // Payloads are wrapped as { kind, ...} so the same channel can carry
-  // different event kinds (new message, reaction update, read receipt).
+  // Realtime delivery via Supabase Realtime. `channel` is an unguessable name
+  // the server only gives to conversation members (lib/realtime.js explains
+  // why it isn't just the conversation id). Payloads are wrapped as
+  // { kind, ... } so one channel carries new messages, reaction updates and
+  // read receipts.
   useEffect(() => {
-    const es = new EventSource(`/api/conversations/${conversationId}/stream`);
-    es.addEventListener("message", (e) => {
-      const payload = JSON.parse(e.data);
-      if (payload.kind === "message") addIfNew(payload.message);
-      else if (payload.kind === "reaction") applyReaction(payload.messageId, payload.reactions);
-      else if (payload.kind === "read") setReadState((prev) => new Map(prev).set(payload.userId, payload.lastReadAt));
-    });
-    return () => es.close();
-  }, [conversationId]);
+    if (!channel) return; // not configured — the poll below still covers it
+    const supabase = supabaseBrowser();
+    if (!supabase) return;
+    const sub = supabase
+      .channel(channel)
+      .on("broadcast", { event: "chat" }, ({ payload }) => {
+        if (payload.kind === "message") addIfNew(payload.message);
+        else if (payload.kind === "reaction") applyReaction(payload.messageId, payload.reactions);
+        else if (payload.kind === "read") setReadState((prev) => new Map(prev).set(payload.userId, payload.lastReadAt));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [channel]);
 
-  // Slow safety-net poll in case the stream drops (spec's own suggestion:
-  // "polling can remain the fallback") — SSE is the primary path now.
+  // Safety-net poll in case realtime drops. Deliberately slow: on Vercel every
+  // poll is a billed function invocation, and realtime is the primary path.
   useEffect(() => {
     const t = setInterval(async () => {
       const last = messages[messages.length - 1];
       const q = last ? `?after=${encodeURIComponent(last.createdAt)}` : "";
       const res = await fetch(`/api/conversations/${conversationId}/messages${q}`);
       if (res.ok) { const d = await res.json(); d.messages.forEach(addIfNew); }
-    }, 10000);
+    }, 15000);
     return () => clearInterval(t);
   }, [conversationId, messages]);
 
-  function pickFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function pickFile(e) {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+    setError("");
+    const tooBig = checkVideo(picked);
+    if (tooBig) { setError(t("posts.composer.errors.videoTooLarge", tooBig)); return; }
+    const file = await compressImage(picked, "chat");
     setAttachment({ file, previewUrl: URL.createObjectURL(file), kind: "media", isVideo: file.type.startsWith("video/") });
   }
 
@@ -113,13 +127,17 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
 
     let mediaUrl = null, mediaType = null;
     if (attachment) {
-      const form = new FormData();
-      form.append("file", attachment.file);
-      form.append("kind", attachment.kind === "voice" ? "voice" : "media");
-      const res = await fetch("/api/messages/upload", { method: "POST", body: form });
-      if (!res.ok) { setBusy(false); window.alert(t("messages.thread.uploadError")); return; }
-      const d = await res.json();
-      mediaUrl = d.url; mediaType = d.type;
+      try {
+        const up = await uploadOne(attachment.file, "messages", t);
+        mediaUrl = up.publicUrl;
+        // A recorded voice note is an audio upload, but the UI shows it as a
+        // player rather than a file, so keep the distinct VOICE type.
+        mediaType = attachment.kind === "voice" ? "VOICE" : up.kind;
+      } catch (err) {
+        setBusy(false);
+        setError(err.message || t("messages.thread.uploadError"));
+        return;
+      }
     }
 
     const res = await fetch(`/api/conversations/${conversationId}/messages`, {
@@ -278,6 +296,9 @@ export default function ChatThread({ conversationId, me, initial, isAdmin, isGro
           )}
           <button onClick={() => setAttachment(null)} aria-label={t("messages.thread.removeAttachment")} className="ml-auto shrink-0 text-gray-400 hover:text-gray-700"><X /></button>
         </div>
+      )}
+      {error && (
+        <p role="alert" className="border-t border-gray-200 bg-red-50 px-4 py-2 text-xs text-red-700">{error}</p>
       )}
       <form onSubmit={send} className="flex items-center gap-2 border-t border-gray-200 p-3">
         <label className="shrink-0 cursor-pointer text-lg" title={t("messages.thread.attachPhotoVideo")}>

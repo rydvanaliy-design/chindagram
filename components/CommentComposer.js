@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { BUILTIN_GIFS } from "@/lib/gifs";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { compressImage } from "@/lib/compressImage";
+import { uploadOne } from "@/lib/uploadClient";
 
 // The comment box at the bottom of a post: text, plus an optional attached
 // image (uploaded) or a small built-in GIF — not both at once.
@@ -12,9 +14,10 @@ export default function CommentComposer({ onSubmit }) {
   const [showGifs, setShowGifs] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  function pickImage(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function pickImage(e) {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+    const file = await compressImage(picked, "comment");
     setAttachment({ type: "IMAGE", file, previewUrl: URL.createObjectURL(file) });
     setShowGifs(false);
   }
@@ -33,12 +36,15 @@ export default function CommentComposer({ onSubmit }) {
     if (attachment?.type === "GIF") {
       mediaUrl = attachment.gifUrl; mediaType = "GIF";
     } else if (attachment?.type === "IMAGE") {
-      const form = new FormData();
-      form.append("image", attachment.file);
-      const res = await fetch("/api/comments/upload-image", { method: "POST", body: form });
-      if (!res.ok) { setBusy(false); window.alert(t("posts.comments.uploadImageError")); return; }
-      const d = await res.json();
-      mediaUrl = d.url; mediaType = "IMAGE";
+      // Straight to Supabase Storage; the app server only ever sees the URL.
+      try {
+        const up = await uploadOne(attachment.file, "comments", t);
+        mediaUrl = up.publicUrl; mediaType = "IMAGE";
+      } catch {
+        setBusy(false);
+        window.alert(t("posts.comments.uploadImageError"));
+        return;
+      }
     }
 
     await onSubmit(text, mediaUrl, mediaType);

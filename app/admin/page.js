@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { requireApproval } from "@/lib/settings";
+import { getStorageUsage, humanBytes, FREE_TIER_BYTES } from "@/lib/storageUsage";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { makeT } from "@/lib/i18n/t";
 import TopBar from "@/components/TopBar";
@@ -38,15 +39,15 @@ export default async function AdminPage({ searchParams }) {
   // anything, but skips already-removed content (nothing to act on there).
   const [matchedPosts, matchedComments, matchedMessages] = q ? await Promise.all([
     prisma.post.findMany({
-      where: { removed: false, caption: { contains: q } }, take: 15, orderBy: { createdAt: "desc" },
+      where: { removed: false, caption: { contains: q, mode: "insensitive" } }, take: 15, orderBy: { createdAt: "desc" },
       select: { id: true, caption: true, author: { select: { name: true } } },
     }),
     prisma.comment.findMany({
-      where: { removed: false, body: { contains: q } }, take: 15, orderBy: { createdAt: "desc" },
+      where: { removed: false, body: { contains: q, mode: "insensitive" } }, take: 15, orderBy: { createdAt: "desc" },
       select: { id: true, body: true, postId: true, author: { select: { name: true } } },
     }),
     prisma.message.findMany({
-      where: { removed: false, body: { contains: q } }, take: 15, orderBy: { createdAt: "desc" },
+      where: { removed: false, body: { contains: q, mode: "insensitive" } }, take: 15, orderBy: { createdAt: "desc" },
       select: { id: true, body: true, sender: { select: { name: true } } },
     }),
   ]) : [[], [], []];
@@ -82,6 +83,7 @@ export default async function AdminPage({ searchParams }) {
     .map((u) => ({ id: u.id, name: u.name }));
 
   const approvalOn = await requireApproval();
+  const storage = await getStorageUsage();
   const pendingCount = await prisma.post.count({ where: { status: "PENDING", removed: false } })
     + await prisma.comment.count({ where: { status: "PENDING", removed: false } })
     + await prisma.wallPost.count({ where: { status: "PENDING", removed: false } });
@@ -118,6 +120,37 @@ export default async function AdminPage({ searchParams }) {
             ))}
           </div>
         </section>
+
+        {/* Storage — the free tier's real ceiling for a photo app */}
+        {storage.ok && (
+          <section className="mb-8">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{t("admin.storage.heading")}</h2>
+            <div className={`rounded-xl border bg-white p-4 ${storage.warn ? "border-amber-300" : "border-gray-200"}`}>
+              <div className="mb-2 flex items-baseline justify-between">
+                <p className="text-sm font-semibold">
+                  {humanBytes(storage.bytes)} <span className="font-normal text-gray-400">/ {humanBytes(FREE_TIER_BYTES)}</span>
+                </p>
+                <p className="text-xs text-gray-400">{t("admin.storage.files", { count: storage.files })}</p>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className={`h-full rounded-full ${storage.warn ? "bg-amber-500" : "bg-brand"}`}
+                  style={{ width: `${Math.max(1, storage.percent).toFixed(1)}%` }}
+                />
+              </div>
+              {storage.warn && (
+                <p className="mt-2 text-xs text-amber-700">{t("admin.storage.warning")}</p>
+              )}
+              {storage.byFolder.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500">
+                  {storage.byFolder.map((f) => (
+                    <li key={f.name}>{f.name}: {humanBytes(f.bytes)} ({f.files})</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Broadcast */}
         <section className="mb-8">
@@ -266,9 +299,9 @@ export default async function AdminPage({ searchParams }) {
           ) : (
             <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
               {blocks.map((b) => {
-                const [beforeBlocked, afterBlocked] = t("admin.blocks.blockedLine", { blocker: " BLOCKER ", blocked: " BLOCKED " })
-                  .split(" BLOCKED ");
-                const [before, afterBlocker] = beforeBlocked.split(" BLOCKER ");
+                const [beforeBlocked, afterBlocked] = t("admin.blocks.blockedLine", { blocker: "\u0000BLOCKER\u0000", blocked: "\u0000BLOCKED\u0000" })
+                  .split("\u0000BLOCKED\u0000");
+                const [before, afterBlocker] = beforeBlocked.split("\u0000BLOCKER\u0000");
                 return (
                   <li key={b.id} className="px-4 py-3 text-sm">
                     {before}<b>{b.blocker.name}</b>{afterBlocker}<b>{b.blocked.name}</b>{afterBlocked}

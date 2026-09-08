@@ -1,13 +1,21 @@
 // Chindagram — Prisma schema
-// SQLite for the prototype; swap provider to "postgresql" when going live.
+// Postgres, hosted on Supabase (Singapore).
+//
+// DATABASE_URL uses Supabase's connection POOLER (port 6543). Vercel runs each
+// request in its own short-lived function, so a direct connection per request
+// would exhaust Postgres' connection limit within minutes — the pooler is what
+// makes serverless survivable.
+// DIRECT_URL uses the direct connection (port 5432) and is used only by
+// `prisma migrate`, which needs a real session the pooler cannot provide.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -19,28 +27,28 @@ model User {
   bio          String?
   image        String?
   pronouns     String?
-  interests    String?  // comma-separated
-  links        String?  // newline-separated URLs
+  interests    String? // comma-separated
+  links        String? // newline-separated URLs
   theme        String   @default("default") // profile accent theme
   locale       String   @default("th") // UI language: th | en
   role         String   @default("STUDENT") // STUDENT | PARENT | TEACHER | ADMIN
-  gradeClass   String?  // e.g. "Class 6B" — shown as a badge
+  gradeClass   String? // e.g. "Class 6B" — shown as a badge
   private      Boolean  @default(true) // Student/Parent default private; Teacher/Admin are always public regardless of this flag
   disabled     Boolean  @default(false)
   createdAt    DateTime @default(now())
 
-  posts       Post[]
-  comments    Comment[]
-  likes       Like[]
-  saves       Save[]
-  following   Follow[]  @relation("follower")
-  followers   Follow[]  @relation("following")
-  reportsMade Report[]  @relation("reporter")
-  stories     Story[]
+  posts          Post[]
+  comments       Comment[]
+  likes          Like[]
+  saves          Save[]
+  following      Follow[]        @relation("follower")
+  followers      Follow[]        @relation("following")
+  reportsMade    Report[]        @relation("reporter")
+  stories        Story[]
   highlights     Highlight[]
   storyResponses StoryResponse[]
 
-  messagesSent   Message[]      @relation("sender")
+  messagesSent            Message[]            @relation("sender")
   conversationsCreated    Conversation[]       @relation("conversationCreator")
   conversationMemberships ConversationMember[]
   messageReactions        MessageReaction[]
@@ -65,8 +73,8 @@ model User {
   friendRequestsReceived Friendship[] @relation("friendAddressee")
 
   // My close-friends list, and lists I appear on.
-  closeFriends   CloseFriend[] @relation("closeFriendOwner")
-  closeFriendOf  CloseFriend[] @relation("closeFriendTarget")
+  closeFriends  CloseFriend[] @relation("closeFriendOwner")
+  closeFriendOf CloseFriend[] @relation("closeFriendTarget")
 
   // Blocking (I block someone / someone blocks me) and muting (one-way, feed-only).
   blocksMade Block[] @relation("blocker")
@@ -74,13 +82,13 @@ model User {
   mutesMade  Mute[]  @relation("muter")
   mutedBy    Mute[]  @relation("muted")
 
-  clubsCreated Club[]
+  clubsCreated    Club[]
   clubMemberships ClubMember[]
 
   eventsCreated Event[]     @relation("eventCreator")
   eventRSVPs    EventRSVP[]
 
-  commentLikes CommentLike[]
+  commentLikes    CommentLike[]
   saveCollections SaveCollection[]
 }
 
@@ -163,7 +171,7 @@ model Club {
 model ClubMember {
   id       String   @id @default(cuid())
   status   String   @default("ACCEPTED") // PENDING (awaiting a club admin's OK) | ACCEPTED
-  role     String   @default("MEMBER")   // MEMBER | ADMIN (any member can be promoted, not just Teacher/Admin accounts)
+  role     String   @default("MEMBER") // MEMBER | ADMIN (any member can be promoted, not just Teacher/Admin accounts)
   joinedAt DateTime @default(now())
 
   clubId String
@@ -203,7 +211,7 @@ model Event {
 
 model EventRSVP {
   id        String   @id @default(cuid())
-  status    String   // GOING | INTERESTED | NOT_GOING
+  status    String // GOING | INTERESTED | NOT_GOING
   createdAt DateTime @default(now())
 
   eventId String
@@ -261,12 +269,12 @@ model Post {
   id         String   @id @default(cuid())
   kind       String   @default("PHOTO") // PHOTO | REEL | TEXT | LINK | POLL | AUDIO | DOCUMENT | REPOST
   caption    String?
-  linkUrl    String?  // for LINK posts
+  linkUrl    String? // for LINK posts
   category   String   @default("NONE") // NONE | ANNOUNCEMENT | ACHIEVEMENT | TIMETABLE | LOSTFOUND (school posts)
-  pinned     Boolean  @default(false)  // pinned to the author's profile, OR within the club feed if clubId is set
+  pinned     Boolean  @default(false) // pinned to the author's profile, OR within the club feed if clubId is set
   removed    Boolean  @default(false)
   status     String   @default("VISIBLE") // VISIBLE | PENDING (held for review)
-  flagReason String?  // why the auto-filter held it (shown to reviewers)
+  flagReason String? // why the auto-filter held it (shown to reviewers)
   createdAt  DateTime @default(now())
 
   authorId String
@@ -283,15 +291,15 @@ model Post {
   repostOf   Post?   @relation("PostRepost", fields: [repostOfId], references: [id], onDelete: SetNull)
   reposts    Post[]  @relation("PostRepost")
 
-  media         PostMedia[]
-  comments      Comment[]
-  likes         Like[]
-  saves         Save[]
-  reports       Report[]
-  pollOptions   PollOption[]
-  pollVotes     PollVote[]
-  collaborators PostCollaborator[]
-  sharedInMessages Message[]
+  media             PostMedia[]
+  comments          Comment[]
+  likes             Like[]
+  saves             Save[]
+  reports           Report[]
+  pollOptions       PollOption[]
+  pollVotes         PollVote[]
+  collaborators     PostCollaborator[]
+  sharedInMessages  Message[]
   repostedToStories Story[]
 
   @@index([authorId, createdAt])
@@ -323,7 +331,7 @@ model PollOption {
   order Int    @default(0)
 
   postId String
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post   Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
   votes  PollVote[]
 
   @@index([postId])
@@ -360,7 +368,7 @@ model PostMedia {
 
 model Story {
   id        String   @id @default(cuid())
-  imageUrl  String?  // null when this story is a repost of a post (repostOfId set instead)
+  imageUrl  String? // null when this story is a repost of a post (repostOfId set instead)
   type      String   @default("IMAGE")
   createdAt DateTime @default(now())
   expiresAt DateTime
@@ -388,12 +396,12 @@ model Story {
 
   // Interactive sticker: at most one per story. POLL/QUIZ carry JSON-encoded
   // options in stickerOptions; QUESTION leaves it null (free-text answers).
-  stickerType     String? // POLL | QUIZ | QUESTION
-  stickerQuestion String?
-  stickerOptions  String? // JSON array of strings, POLL/QUIZ only
+  stickerType         String? // POLL | QUIZ | QUESTION
+  stickerQuestion     String?
+  stickerOptions      String? // JSON array of strings, POLL/QUIZ only
   stickerCorrectIndex Int? // QUIZ only — index into stickerOptions
 
-  responses StoryResponse[]
+  responses     StoryResponse[]
   replyMessages Message[]
 
   @@index([expiresAt])
@@ -420,10 +428,10 @@ model Highlight {
 // A viewer's response to a story's interactive sticker. One response per
 // viewer per story. optionIndex is used for POLL/QUIZ; text for QUESTION.
 model StoryResponse {
-  id        String   @id @default(cuid())
+  id          String   @id @default(cuid())
   optionIndex Int?
   text        String?
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   storyId String
   story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
@@ -437,8 +445,8 @@ model StoryResponse {
 model Comment {
   id         String   @id @default(cuid())
   body       String
-  mediaUrl   String?  // an attached image or a built-in GIF
-  mediaType  String?  // IMAGE | GIF
+  mediaUrl   String? // an attached image or a built-in GIF
+  mediaType  String? // IMAGE | GIF
   pinned     Boolean  @default(false) // the post author (or a moderator) pinned this to the top
   removed    Boolean  @default(false)
   status     String   @default("VISIBLE") // VISIBLE | PENDING (held for review)
@@ -543,7 +551,7 @@ model Follow {
 model Conversation {
   id        String   @id @default(cuid())
   isGroup   Boolean  @default(false)
-  name      String?  // group display name; 1:1 threads derive a name from the other member
+  name      String? // group display name; 1:1 threads derive a name from the other member
   pairKey   String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -577,7 +585,7 @@ model ConversationMember {
 
 model Message {
   id        String   @id @default(cuid())
-  body      String   // may be empty when sharedPostId or mediaUrl is set
+  body      String // may be empty when sharedPostId or mediaUrl is set
   removed   Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -612,7 +620,7 @@ model Message {
 
 model MessageReaction {
   id        String   @id @default(cuid())
-  type      String   // same REACTIONS set as post reactions (lib/reactions.js)
+  type      String // same REACTIONS set as post reactions (lib/reactions.js)
   createdAt DateTime @default(now())
 
   messageId String
@@ -626,7 +634,7 @@ model MessageReaction {
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // LIKE | COMMENT | FOLLOW | MESSAGE | MENTION | COLLAB | FOLLOW_REQUEST | FOLLOW_ACCEPT | FRIEND_REQUEST | FRIEND_ACCEPT
+  type      String // LIKE | COMMENT | FOLLOW | MESSAGE | MENTION | COLLAB | FOLLOW_REQUEST | FOLLOW_ACCEPT | FRIEND_REQUEST | FRIEND_ACCEPT
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -651,16 +659,32 @@ model Report {
   createdAt DateTime @default(now())
 
   reporterId String
-  reporter   User    @relation("reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporter   User   @relation("reporter", fields: [reporterId], references: [id], onDelete: Cascade)
 
-  postId    String?
-  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  commentId String?
-  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  messageId String?
-  message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  postId     String?
+  post       Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId  String?
+  comment    Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  messageId  String?
+  message    Message?  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   wallPostId String?
   wallPost   WallPost? @relation(fields: [wallPostId], references: [id], onDelete: Cascade)
 
   @@index([status])
+}
+
+// Rate-limit hits, one row per action attempt.
+//
+// This used to be an in-memory Map, which was correct when the app ran as one
+// persistent Node server. On Vercel each request may land in a different
+// function instance, so an in-memory counter resets constantly and a determined
+// user gets past the limit simply by being routed to a fresh instance. Postgres
+// is the only state every instance shares. Old rows are swept opportunistically
+// (see lib/ratelimit.js) so this table stays small.
+model RateHit {
+  id        String   @id @default(cuid())
+  bucket    String // e.g. "post:<userId>" or "register:<ip>"
+  createdAt DateTime @default(now())
+
+  @@index([bucket, createdAt])
 }

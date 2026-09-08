@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit, tooManyResponse } from "@/lib/ratelimit";
 import { prisma } from "@/lib/prisma";
-import { saveMedia, saveAudio, saveDocument } from "@/lib/upload";
+import { publicUrl, verifyUploaded } from "@/lib/storage";
 import { getSessionUser } from "@/lib/guards";
 import { decideTextStatus } from "@/lib/moderation";
 import { isSchoolCategory } from "@/lib/postkinds";
@@ -16,7 +16,7 @@ export async function POST(req) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const posted = rateLimit(`post:${me.id}`, 15, 10 * 60 * 1000);
+  const posted = await rateLimit(`post:${me.id}`, 15, 10 * 60 * 1000);
   if (!posted.ok) return tooManyResponse(posted.retryAfterSec);
 
   try {
@@ -25,7 +25,23 @@ export async function POST(req) {
     const linkUrl = String(form.get("linkUrl") || "").trim();
     const collaborator = String(form.get("collaborator") || "").trim().toLowerCase().replace(/^@/, "");
     let kind = String(form.get("kind") || "").trim().toUpperCase();
-    const files = form.getAll("media").filter((f) => f && typeof f !== "string");
+    // The browser uploads straight to Supabase Storage and sends us the
+    // resulting paths, not the bytes (lib/storage.js explains why). Each path
+    // is checked against the bucket below before it reaches the database.
+    let uploads = [];
+    try {
+      const raw = form.get("uploads");
+      if (raw) uploads = JSON.parse(String(raw));
+      if (!Array.isArray(uploads)) uploads = [];
+    } catch {
+      uploads = [];
+    }
+    uploads = uploads.filter((u) => u && typeof u.path === "string").slice(0, 10);
+    for (const u of uploads) {
+      if (!(await verifyUploaded(u.path))) {
+        return NextResponse.json({ error: "That upload didn't finish. Please try again." }, { status: 400 });
+      }
+    }
     // Optional per-image alt text, sent as a JSON array parallel to the photo files.
     let altTexts = [];
     try {
@@ -68,11 +84,11 @@ export async function POST(req) {
       data.kind = "POLL";
       data.pollOptions = { create: options.map((text, i) => ({ text: text.slice(0, 120), order: i })) };
     } else if (kind === "AUDIO" || kind === "DOCUMENT") {
-      const file = files[0];
-      if (!file) return NextResponse.json({ error: "Choose a file to upload." }, { status: 400 });
-      const saved = kind === "AUDIO" ? await saveAudio(file) : await saveDocument(file);
+      const up = uploads[0];
+      if (!up) return NextResponse.json({ error: "Choose a file to upload." }, { status: 400 });
+      if (up.kind !== kind) return NextResponse.json({ error: "That file type doesn't match the post type." }, { status: 400 });
       data.kind = kind;
-      data.media = { create: [{ url: saved.url, type: saved.type, name: saved.name, order: 0 }] };
+      data.media = { create: [{ url: publicUrl(up.path), type: up.kind, name: String(up.name || "file").slice(0, 200), order: 0 }] };
     } else if (kind === "REPOST") {
       const originalPostId = String(form.get("originalPostId") || "").trim();
       if (!originalPostId) return NextResponse.json({ error: "Missing original post." }, { status: 400 });
@@ -87,18 +103,16 @@ export async function POST(req) {
       data.repostOfId = original.repostOfId || original.id;
     } else {
       // Photo / video post.
-      if (files.length === 0) {
+      if (uploads.length === 0) {
         return NextResponse.json({ error: "Please choose at least one photo or a video." }, { status: 400 });
       }
-      const isVideo = String(files[0].type || "").startsWith("video/");
+      const isVideo = uploads[0].kind === "VIDEO";
       data.kind = isVideo ? "REEL" : "PHOTO";
-      const toSave = isVideo ? files.slice(0, 1) : files.slice(0, 10);
-      const media = [];
-      for (let i = 0; i < toSave.length; i++) {
-        const saved = await saveMedia(toSave[i]);
+      const toSave = isVideo ? uploads.slice(0, 1) : uploads.slice(0, 10);
+      const media = toSave.map((up, i) => {
         const alt = !isVideo && typeof altTexts[i] === "string" ? altTexts[i].trim().slice(0, 500) : "";
-        media.push({ url: saved.url, type: saved.type, order: i, alt: alt || null });
-      }
+        return { url: publicUrl(up.path), type: up.kind, order: i, alt: alt || null };
+      });
       data.media = { create: media };
     }
 
