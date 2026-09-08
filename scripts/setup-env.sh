@@ -41,7 +41,7 @@ echo "Chindagram — Supabase setup"
 echo "Values you paste are hidden and stay on this machine."
 echo
 
-printf "Supabase project ref (e.g. eppslxpahfjnskgxbcag): "
+printf "Supabase project ref (e.g. abcdefghijklmnopqrst): "
 read -r PROJECT_REF
 [ -n "$PROJECT_REF" ] || { echo "Project ref is required."; exit 1; }
 
