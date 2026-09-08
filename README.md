@@ -1,22 +1,40 @@
 # Chindagram
 
 A private, Instagram-style platform for Chindamanee School.
-Stack: Next.js (App Router) · Tailwind · Prisma + SQLite · Auth.js (credentials) · bcryptjs.
 
-## First run / after a schema change (4 steps)
-The database structure grew again (notifications, saved posts, message moderation), so rebuild it once:
+**Stack:** Next.js (App Router) · Tailwind · Prisma + Postgres · Auth.js (credentials) · bcryptjs
+**Hosting:** Vercel (Singapore) + Supabase for the database, file storage and realtime chat
+
+## Running it
+
+You need a Supabase project first — the app keeps its database and uploaded
+photos there. Full walkthrough in [DEPLOY.md](DEPLOY.md).
+
 ```bash
-cd chindagram
-# 1. stop the app if it's running: press Control + C in its Terminal
-# 2. delete the old database:
-rm -f prisma/dev.db
-# 3. rebuild it with the new structure:
-npx prisma migrate dev --name social-extras
-# 4. start the app:
+npm install
+cp .env.example .env
+bash scripts/setup-env.sh        # fills in the keys; input is hidden
+npx prisma migrate deploy        # creates the tables
+node scripts/verify-supabase.mjs # checks it all works
 npm run dev
 ```
-Open **http://localhost:3000**. Day to day after this, you only need `npm run dev`.
-The **first account you create is the admin.**
+
+Open **http://localhost:3000**. The **first account you create is the admin.**
+
+## How the hosting works
+
+Uploaded photos are **compressed in the browser before upload** — resized to
+1600px and re-encoded as WebP, taking a 2.4 MB phone photo down to about
+220 KB. That is what keeps the app inside Supabase's free 1 GB of storage
+(roughly 4,500 photos instead of ~300), and what stops the feed buffering on a
+school mobile connection. Videos are capped at 15 MB rather than re-encoded,
+because doing that in a browser is unreliable on iPhones.
+
+Files never pass through the app server: the browser gets a signed URL and
+uploads straight to Supabase. Live chat runs over Supabase Realtime on channels
+named with an HMAC, so only members of a conversation can subscribe to it.
+
+The admin page shows how full storage is, and warns at 70%.
 
 ## Everything it does now
 - **Accounts** — email + password; logged-out visitors see only login; disabled accounts are locked out.
